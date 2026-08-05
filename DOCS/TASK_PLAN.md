@@ -22,10 +22,11 @@ Revisado directamente contra o código en `js/`:
 - ✅ **Receitario básico**: `js/datos/receitas.js`, vista `js/vistas/receitario.js`, busca e filtros.
 - ✅ **Planificación do xantar**: calendario semanal (`js/vistas/semana.js`), xerador de menú por puntuación (`js/xerador.js`).
 - ✅ **Neveira e adaptacións por persoa**: `js/vistas/neveira.js`, `js/datos/familia.js`.
-- ✅ **Despregamento en Cloudflare Pages**: feito.
-- ❌ **Todo o resto** (n8n, Supabase, R2, IA, nutrición, fotografías reais, modo cociñar, aprendizaxe): sen empezar. Os datos de receitas, ingredientes e familia son arrays estáticos en `js/datos/`, e o estado vive só en `localStorage` (`js/estado.js`).
+- ✅ **Despregamento en Cloudflare Pages**: feito (versión previa a esta integración; ver nota de 2.6/2.8 sobre se xa inclúe este commit).
+- 🟡 **Cliente de API, login e compartición no frontend** (`78d6e22 feat: conecta a web coa API de n8n`): `js/api.js`, `js/vistas/configuracion.js`, `js/publico.js` e os cambios en `js/app.js`/`index.html`/`sw.js` xa están no código. Implementan o contrato de `API_CONTRACT.md` completo dende o punto de vista do frontend. Non se puido verificar dende este repositorio se hai un backend n8n real respondendo, nin se CORS está configurado — ver `BACKEND_N8N_STATUS.md`.
+- ❌ **Resto** (Supabase real, R2, IA, nutrición, fotografías reais, modo cociñar, aprendizaxe): sen empezar no frontend. Os arrays estáticos de `js/datos/` seguen sendo o arranque e o modo sen conexión/sen sesión.
 
-En resumo: **a Fase 1 está completa**. "Login de cociñeiros" e "Compartición do menú" pasaron formalmente á Fase 2 (ver `ROADMAP.md`): ambas precisan dun backend que aínda non existe (token de sesión, URL pública efémera). A Fase 2 é o traballo pendente inmediato.
+En resumo: a Fase 1 (receitario, planificación, neveira, PWA) está completa. A Fase 2 xa ten código de frontend para autenticación e sincronización (2.1, 2.3, 2.7 abaixo), pero iso non abonda para darlas por rematadas de verdade (criterio de "Como usar este documento": ten que funcionar, non só estar escrito) — falta confirmar dende fóra do repo que o backend responde e está publicado.
 
 ---
 
@@ -35,51 +36,55 @@ Obxectivo (de `ROADMAP.md`): deixar de depender só do navegador. Trasladar a fo
 
 Principio guía (`ARCHITECTURE.md`): o frontend nunca fala directamente coa base de datos; todo pasa por n8n mediante HTTPS e un token.
 
-## 2.1 · Deseñar o contrato de API
+## 2.1 · Deseñar o contrato de API ✅
 
-- [ ] Listar as operacións que hoxe fai `js/estado.js` sobre `localStorage` e convertelas en endpoints n8n: ler/gardar `semana`, ler/gardar `neveira`, ler/gardar `cociñeiros`, ler `comensais` (persoas), ler `receitas`, ler `ingredientes`.
-- [ ] Definir os mesmos "shapes" de datos que xa usan `QCH.receita(id)`, `QCH.ingrediente(id)` e `QCH.persoa(id)` (ver `js/datos/*.js`), para que as vistas non teñan que cambiar cando os datos veñan da rede en vez de estar en memoria.
-- [ ] Definir os endpoints de autenticación (login por token) e de compartición (crear URL efémera, consultar menú público por token).
-- [ ] Documentar o contrato (aínda que sexa informalmente, nun ficheiro ou nun workflow de n8n) antes de escribir código no frontend.
+- [x] Listar as operacións que hoxe fai `js/estado.js` sobre `localStorage` e convertelas en endpoints n8n: ler/gardar `semana`, ler/gardar `neveira`, ler/gardar `cociñeiros`, ler `comensais` (persoas), ler `receitas`, ler `ingredientes`.
+- [x] Definir os mesmos "shapes" de datos que xa usan `QCH.receita(id)`, `QCH.ingrediente(id)` e `QCH.persoa(id)` (ver `js/datos/*.js`), para que as vistas non teñan que cambiar cando os datos veñan da rede en vez de estar en memoria.
+- [x] Definir os endpoints de autenticación (login por token) e de compartición (crear URL efémera, consultar menú público por token).
+- [x] Documentar o contrato — `API_CONTRACT.md`, agora reescrito para describir exactamente o que chama `js/api.js` no código actual, non unha proposta previa ao código.
 
-## 2.2 · Autenticación por token
+## 2.2 · Autenticación por token ✅ (frontend); backend real sen confirmar
 
-- [ ] Deseñar unha pantalla/paso de acceso sinxelo (un único perfil, "cociñeiro", segundo `VISION.md` §Usuarios — non hai roles nin permisos distintos).
-- [ ] Decidir onde vive o token no frontend (probablemente `localStorage`, coma o resto do estado) e como se envía nas peticións a n8n.
-- [ ] Lembrar que isto **non** é gardar un segredo de aplicación (API key): é un token de sesión do cociñeiro, coherente con "nunca gardar credenciais no navegador" de `AI_GUIDELINES.md` referido a segredos da app, non a sesións de usuario.
+- [x] Pantalla de acceso sinxelo: modal de Configuración (`js/vistas/configuracion.js`), un só formulario URL + token, sen roles.
+- [x] O token vive en `localStorage` (`qch:api:v1`, xunto coa URL base e a caducidade que devolva o servidor) e envíase como `Authorization: Bearer <token>` en cada chamada privada (`js/api.js`).
+- [x] O código introducido pola persoa non se garda — só se envía en `POST /auth/login`; o que persiste é o token de sesión devolto polo servidor, coherente con "non é unha API key" de `AI_GUIDELINES.md`.
+- Pendente de confirmar (non verificable dende o código): que ese login funcione de verdade contra un n8n real en produción — ver `BACKEND_N8N_STATUS.md`.
 
-## 2.3 · Cliente de API (`js/api.js`)
+## 2.3 · Cliente de API (`js/api.js`) ✅
 
-- [ ] Crear un novo módulo `js/api.js`, seguindo o mesmo patrón de namespace `QCH.*` que xa usan `js/estado.js` e `js/xerador.js` (IIFE, sen clases, sen dependencias externas).
-- [ ] Engadir o `<script src="js/api.js">` correspondente en `index.html` (na orde correcta, antes dos módulos que o vaian usar) e a súa entrada en `ARMAZON` en `sw.js`.
-- [ ] Manter o mesmo estilo do resto do proxecto: JS clásico (non módulos ES), sen build, funcións pequenas.
+- [x] `js/api.js` existe, namespace `QCH.api`, IIFE, sen clases nin dependencias externas, mesmo estilo que `js/estado.js`/`js/xerador.js`.
+- [x] `<script src="js/api.js">` engadido en `index.html` na orde correcta (despois de `estado.js`, antes de `xerador.js`), e entrada en `ARMAZON` de `sw.js` (que subiu a `qch-v4`).
+- [x] Funcións pequenas, JS clásico, sen build.
 
-## 2.4 · Migrar os datos estáticos a datos remotos
+> Detalle completo do que implementa `QCH.api` en `API_CONTRACT.md`.
 
-- [ ] Substituír gradualmente `js/datos/receitas.js`, `js/datos/ingredientes.js` e `js/datos/familia.js` por chamadas a `js/api.js`, mantendo `QCH.RECEITAS`, `QCH.INGREDIENTES` e `QCH.PERSOAS` como caché en memoria alimentada pola API (para non ter que reescribir todas as vistas de golpe).
-- [ ] Conservar un modo de traballo sen conexión: se a API non responde, seguir a funcionar cos últimos datos coñecidos (xa gardados vía `localStorage` en `js/estado.js`).
+## 2.4 · Migrar os datos estáticos a datos remotos ✅
 
-## 2.5 · Sincronización offline-first
+- [x] `QCH.api.prepararCasa()` substitúe `QCH.RECEITAS`, `QCH.INGREDIENTES` e `QCH.PERSOAS` en memoria polos datos remotos tras un login correcto, sen que as vistas cambiasen.
+- [x] Modo sen conexión conservado: se `prepararCasa()` falla, o login segue sendo válido e a app continúa cos datos locais/estáticos; reinténtase ao recuperar conexión.
 
-- [ ] Implementar o fluxo descrito en `FUNCTIONAL_SPECIFICATION.md` §8-9: os cambios gárdanse sempre en local primeiro; se falla a sincronización, consérvanse e reinténtase automaticamente ao recuperar conexión.
-- [ ] Non bloquear nunca a interface agardando pola rede — o patrón actual de `QCH.estado.update()` (actualizar local, notificar, pintar) débese manter; a chamada á API vai "por detrás".
+## 2.5 · Sincronización offline-first ✅
 
-## 2.6 · Axustar o Service Worker
+- [x] `QCH.estado.subscribe()` en `js/app.js` chama a `QCH.api.sincronizar()` despois de pintar, nunca antes — a rede non bloquea a interface.
+- [x] Cola de pendentes en `localStorage` (`qch:api:pendentes:v1`); reintento automático en `online` e en cada sincronización nova.
+- [x] Sen fusión de conflitos: un `409` ou calquera outro erro trátase coma un fallo de rede normal (queda pendente). Isto é unha decisión simple, non un caso sen cubrir — documentado como tal en `API_CONTRACT.md` §6.
 
-- [ ] Revisar `sw.js`: o armazón estático (HTML/CSS/JS/iconos) segue en caché-first coma agora; as respostas de API deben ir en network-first (ou stale-while-revalidate) para non mostrar datos vellos quen ten conexión.
-- [ ] Comprobar que o fallback a `index.html` sen conexión segue funcionando cando se engadan chamadas de rede novas.
+## 2.6 · Axustar o Service Worker 🟡
 
-## 2.7 · Compartición do menú (movida desde a Fase 1)
+- [x] `sw.js` cachea os ficheiros novos (`js/api.js`, `js/vistas/configuracion.js`, `js/publico.js`) e subiu de versión (`qch-v1` → `qch-v4`).
+- [x] O fallback a `index.html` sen conexión séguese aplicando igual (non se tocou esa parte do `fetch` handler).
+- [ ] **Non se implementou** unha estratexia diferenciada (network-first/stale-while-revalidate) para as respostas de API: o `fetch` handler de `sw.js` simplemente ignora calquera petición de orixe distinta (`url.origin !== location.origin`), así que as chamadas a n8n nin se cachean nin pasan polo Service Worker — van sempre directas á rede. Practicamente equivale a "network-only" para a API (non se amosan datos vellos), pero non é o deseño explícito que describía esta tarefa; se algún día a API se serve dende o mesmo dominio, isto habería que revisalo.
 
-- [ ] Endpoint en n8n que cree unha URL pública efémera (identificador aleatorio, caducidade dese día, non indexable) — responsabilidade do backend segundo `ARCHITECTURE.md`.
-- [ ] Botón "Compartir" na vista `hoxe` (`js/vistas/hoxe.js`) que chame a ese endpoint e abra WhatsApp co enlace, tal como describe `VISION.md` §Compartición diaria.
-- [ ] Páxina pública (fóra da app principal, sen autenticación) que amose prato, foto, ingredientes, alérxenos, nutrición, comensais previstos e equilibrio semanal/mensual — contido mínimo definido en `FUNCTIONAL_SPECIFICATION.md` §5.
+## 2.7 · Compartición do menú ✅ (frontend); endpoint de n8n sen confirmar
 
-## 2.8 · Infraestrutura n8n (fóra deste repositorio)
+- [x] Botón "Compartir" en `js/vistas/hoxe.js`, acción `compartir-menu` en `js/app.js`: chama a `POST /compartir`, usa `navigator.share` se está dispoñible e, se non, abre `wa.me` cun texto co enlace.
+- [x] Páxina pública `js/publico.js`: detecta `/m/<token>`, quita cabeceira e barra de navegación, chama a `GET /publico/<token>` sen sesión, e amosa receita, ingredientes e comensais previstos; nutrición amósase só se o servidor a devolve, senón un aviso de "aínda non dispoñible" (non alérxenos nin equilibrio semanal/mensual — iso non está implementado).
+- Pendente de confirmar (fóra deste repo): que o endpoint `POST /compartir` en n8n cree de verdade unha URL efémera, non indexable e con caducidade — o frontend asume esa forma pero non pode verificala.
 
-- [ ] Configurar a instancia de n8n: primeiros workflows (login, CRUD de semana/neveira/receitas, xeración de URL de compartición).
-- [ ] Conectar n8n con Supabase (ver Fase 3) para persistencia real.
-- [ ] Isto é traballo de infraestrutura/configuración, non código JS deste repositorio — trátao como un proxecto á parte coordinado con esta fase.
+## 2.8 · Infraestrutura n8n (fóra deste repositorio) — sen confirmar dende este repo
+
+- [ ] Non hai forma de verificar dende este repositorio se a instancia de n8n está configurada, ten os workflows creados, ou está conectada a Supabase. `BACKEND_N8N_STATUS.md` documenta explicitamente este límite en vez de asumir un estado.
+- [ ] Isto segue sendo traballo de infraestrutura/configuración á parte, coordinado con quen administre o VPS/n8n/Supabase.
 
 ---
 
