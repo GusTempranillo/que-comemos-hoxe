@@ -32,8 +32,11 @@ Inclúe:
 Estado: **Completada**.
 
 > "Login de cociñeiros" e "Compartición do menú" pasaron á Fase 2: ambas
-> precisan dun backend (n8n) que xere tokens e URLs efémeras, e ese backend
-> aínda non existe. Detalle en `TASK_PLAN.md`.
+> precisan dun backend (n8n) que xere tokens e URLs efémeras. O frontend xa
+> ten o código cliente para as dúas (`js/api.js`, `js/vistas/configuracion.js`,
+> `js/publico.js`), pero se ese backend está realmente activo e accesible en
+> produción non se pode confirmar dende este repositorio. Detalle en
+> `TASK_PLAN.md` e `BACKEND_N8N_STATUS.md`.
 
 ---
 
