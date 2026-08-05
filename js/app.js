@@ -70,6 +70,9 @@ window.QCH = window.QCH || {};
           '<button type="button" data-accion="tema" aria-label="Cambiar entre modo claro e escuro" ' +
             'class="w-11 h-11 md:w-9 md:h-9 rounded-full grid place-items-center text-tinta/60 dark:text-crema/60 hover:bg-tinta/8 dark:hover:bg-white/10 transition-colors">' +
             QCH.icona(s.tema === 'escuro' ? 'sol' : 'lua', 'w-[18px] h-[18px]', 1.9) + '</button>' +
+          '<button type="button" data-accion="abrir-configuracion" aria-label="Configuración" ' +
+            'class="w-11 h-11 md:w-9 md:h-9 rounded-full grid place-items-center text-tinta/60 dark:text-crema/60 hover:bg-tinta/8 dark:hover:bg-white/10 transition-colors">' +
+            QCH.icona('config', 'w-[18px] h-[18px]', 1.9) + '</button>' +
         '</div>' +
       '</div>';
   }
@@ -228,6 +231,53 @@ window.QCH = window.QCH || {};
       QCH.toast(ing.nome + ' na neveira');
     },
 
+    'abrir-configuracion': () => QCH.abrirConfiguracion(),
+
+    'config-iniciar-sesion': (el) => {
+      const campoUrl = QCH.$('#config-url', el);
+      const campoToken = QCH.$('#config-token', el);
+      const url = campoUrl ? campoUrl.value.trim() : '';
+      const token = campoToken ? campoToken.value.trim() : '';
+      if (!url || !token) { QCH.toast('Cubre os dous campos', 'aviso'); return; }
+
+      QCH.abrirConfiguracion({ url, enviando: true });
+      QCH.api.configurar(url);
+      QCH.api.login(token).then(resposta => {
+        QCH.toast(resposta.aviso ? 'Sesión iniciada; sincronizarase cando haxa rede' : 'Sesión iniciada');
+        QCH.modal.pechar();
+      }).catch(e => {
+        QCH.abrirConfiguracion({ url, erro: (e && e.mensaxe) || 'Non se puido iniciar sesión' });
+      });
+    },
+
+    'config-pechar-sesion': () => {
+      QCH.api.logout();
+      QCH.toast('Sesión pechada', 'aviso');
+      QCH.abrirConfiguracion();
+    },
+
+    'compartir-menu': (el) => {
+      const dia = el.getAttribute('data-dia');
+      const receita = QCH.receita(QCH.estado.get().semana[QCH.slot(dia, 'xantar')]);
+      if (!receita) { QCH.toast('Primeiro escolle un prato para hoxe', 'aviso'); return; }
+      if (!QCH.api.estaAutenticada()) {
+        QCH.toast('Inicia sesión para crear a ligazón', 'aviso');
+        QCH.abrirConfiguracion();
+        return;
+      }
+      QCH.api.compartir(dia).then(resposta => {
+        if (!resposta || !resposta.url) return Promise.reject({ mensaxe: 'Non se recibiu a ligazón pública' });
+        const texto = 'Hoxe hai ' + receita.nome + ': ' + resposta.url;
+        if (navigator.share) return navigator.share({ title: 'Que comemos hoxe?', text: texto, url: resposta.url });
+        window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+      }).catch(erro => {
+        /* Pechar o selector nativo de compartir non é un erro que haxa que
+           amosar; en calquera outro caso explicamos que a ligazón non saíu. */
+        if (erro && erro.name === 'AbortError') return;
+        QCH.toast((erro && erro.mensaxe) || 'Non se puido crear a ligazón', 'erro');
+      });
+    },
+
     'toggle-comensal': (el) => {
       const id = el.getAttribute('data-id');
       QCH.estado.update(s => {
@@ -268,6 +318,16 @@ window.QCH = window.QCH || {};
       if (fn) fn(el, ev);
     });
 
+    // Formularios (ex. login en configuracion.js): Intro ou o botón "ir" do
+    // teclado móbil disparan 'submit' directamente, sen pasar por 'click'.
+    document.addEventListener('submit', (ev) => {
+      const el = ev.target.closest('[data-accion]');
+      if (!el) return;
+      ev.preventDefault();
+      const fn = accions[el.getAttribute('data-accion')];
+      if (fn) fn(el, ev);
+    });
+
     document.addEventListener('input', (ev) => {
       const el = ev.target.closest('[data-accion]');
       if (!el) return;
@@ -283,14 +343,33 @@ window.QCH = window.QCH || {};
 
   /* ---------- Arranque ---------- */
   function iniciar() {
+    if (QCH.eRutaPublica && QCH.eRutaPublica()) {
+      QCH.iniciarPublico();
+      return;
+    }
     app = document.getElementById('app');
     cabeceira = document.getElementById('cabeceira');
     barraInferior = document.getElementById('barra-inferior');
 
     aplicarTema();
     conectar();
-    QCH.estado.subscribe((s, motivo) => pintar(motivo));
+    QCH.estado.subscribe((s, motivo) => {
+      pintar(motivo);
+      if (motivo === 'semana' || motivo === 'neveira' || motivo === 'cociñeiros') {
+        QCH.api.sincronizar(motivo, s[motivo]);
+      }
+    });
     pintar('nav');
+
+    window.addEventListener('online', () => {
+      QCH.api.reintentarPendentes().then(() => {
+        /* Non descargamos unha versión remota por riba de cambios que aínda
+           seguen na cola. Primeiro teñen que chegar á casa. */
+        if (QCH.api.estaAutenticada() && !QCH.api.pendentes().length) {
+          return QCH.api.prepararCasa();
+        }
+      }).catch(() => { /* tentamos na seguinte conexión */ });
+    });
 
     document.getElementById('cargando').remove();
 
