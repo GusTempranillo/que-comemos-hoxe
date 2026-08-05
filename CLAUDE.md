@@ -10,6 +10,8 @@ Read `DOCS/` before making non-trivial changes, in this order: `VISION.md` → `
 
 ## Running the app
 
+Antes de comezar calquera tarefa, le tamén AI_COLABORACION.md e cumpre todas as súas normas.
+
 There is no build step, no package manager, and no test suite — the app is plain HTML/CSS/JS served (or opened) as-is.
 
 ```bash
