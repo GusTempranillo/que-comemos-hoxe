@@ -73,8 +73,8 @@ Se `login()` obtén sesión pero `prepararCasa()` falla nese intre, `login()` no
 
 # 6. Preguntas abertas (sen resolver dende o código)
 
-- Duración e renovación real do token de sesión: o frontend só garda o `caduca` que devolva o servidor; non hai valor asumido no código.
 - Comportamento exacto ante un `409` de conflito: hoxe trátase igual que calquera outro erro (queda pendente).
-- Se existe ou non un endpoint de IA en n8n: o frontend non o chama, así que este repositorio non pode confirmalo nin negalo.
 
-Todo o relativo a **se o backend real (n8n + Supabase) está activo, publicado ou accesible dende `qch.pages.dev`** é información externa a este repositorio: ver `BACKEND_N8N_STATUS.md`, que a marca explicitamente como non verificada dende aquí.
+Confirmado directamente por quen administra n8n (ver `BACKEND_N8N_STATUS.md`, "Estado confirmado"): a sesión dura 14 días; existe `POST /ia/propoñer-semana` (Moonshot/Kimi) pero está inactivo e o frontend aínda non o chama.
+
+Todo o relativo a **se o backend real (n8n + Supabase) está activo, publicado ou accesible dende `qch.pages.dev`** documéntase en `BACKEND_N8N_STATUS.md` — a día de hoxe os workflows QCH están **inactivos** e as 12 rutas devolven 404, aínda que o resto da infraestrutura (n8n, Supabase, CORS, despregue en Pages) está correctamente configurada.
