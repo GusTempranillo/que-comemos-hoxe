@@ -2,9 +2,14 @@
 
 > Este documento afirmaba orixinalmente só o que se podía verificar lendo o código deste repositorio, xa que a sandbox de Claude Code non ten acceso a n8n, Supabase nin infraestrutura fóra do repo. A sección **"Estado confirmado"** de máis abaixo é a excepción: recolle respostas dadas directamente por quen administra esa infraestrutura (Codex, 2026-08-05) e trátase como fonte fiable, non como dedución do código.
 
-## Estado confirmado (Codex, 2026-08-05)
+## Estado confirmado (Codex, 2026-08-05, actualizado o mesmo día)
 
-- **n8n está san** (a instancia en si responde), pero **a API QCH non está publicada**: os 10 workflows QCH existen pero están **inactivos**, e non hai webhooks `qch/*` rexistrados. As 12 rutas do contrato (`API_CONTRACT.md` §2) devolven **404** agora mesmo, incluído `GET /publico/:token`.
+- **Os 10 workflows QCH están activos e publicados.** Xa non devolven 404 — a API está en produción.
+- `POST /auth/login` cun token válido devolve `{"token":"qch_msgocc3v_0vtzzm2cmhyh","caduca":"2026-08-19T22:44:20.683Z"}` (14 días, coma o previsto).
+- `GET /receitas` devolve un array de 14 receitas coa forma `[{ "id": "tortilla", ... }, ...]`, válida segundo `listaValida()` de `js/api.js`.
+- **`QCH_HOUSE_TOKEN` xa foi cambiado**: o código de acceso real da casa é `qch-e0d33e6e7850c5565af4400d6add2129` (xa non é `1234`).
+- **Atopouse e corrixiuse un fallo real de persistencia**: o `PUT` de `/neveira` (e tamén `/semana` e `/cociñeiros`) devolvía `200 {"gardado":true,...}` pero a lectura seguinte volvía ao valor antigo (proba: gardar `sal: 21`, unha sesión nova lía `sal: 20`, o valor de reserva). Corrixido nos tres workflows por Codex; a comprobación repetida contra a API pública xa pasa: tras gardar, unha sesión nova le o valor novo.
+- **Pendente de confirmar visualmente**: unha proba de verdade en navegador (abrir `qch.pages.dev`, iniciar sesión, cambiar a neveira dende a UI, recargar e ver que persiste) aínda non se fixo — tanto a sandbox de Codex coma a de Claude Code teñen bloqueado o acceso de rede a `qch.pages.dev`/`n8n.xosemiguel.eu` (proxy da sandbox, non un problema do servidor). A comprobación feita foi contra a API directamente (login → PUT → nova sesión → GET), non dende o navegador.
 - Resposta real actual de `POST /auth/login` (mentres estea inactivo):
   ```json
   {
