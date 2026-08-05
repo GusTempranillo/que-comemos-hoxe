@@ -54,7 +54,7 @@ Tarefas:
 - Persistencia dos datos.
 - Primeiros workflows.
 
-Estado: **En desenvolvemento** — os 10 workflows QCH xa están activos en produción, login e persistencia (semana/neveira/cociñeiros) confirmados funcionando contra a API real (ver `BACKEND_N8N_STATUS.md`). Só queda pendente unha proba visual en navegador real (clics + recarga en `qch.pages.dev`), que aínda non se puido facer por restricións de rede das sandboxes usadas ata agora.
+Estado: **Completada** — os 10 workflows QCH están activos en produción; login, e persistencia de `semana`/`neveira`/`cociñeiros` verificados de punta a punta nun navegador real contra `https://qch.pages.dev` (ver `BACKEND_N8N_STATUS.md`). Quedan sen probar explicitamente a compartición de menú e o comportamento offline/reconexión.
 
 ---
 
