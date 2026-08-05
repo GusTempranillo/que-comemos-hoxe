@@ -92,10 +92,12 @@ Principio guía (`ARCHITECTURE.md`): o frontend nunca fala directamente coa base
 
 Obxectivo: construír a memoria permanente en Supabase.
 
-- [ ] Deseñar o esquema relacional a partir do modelo conceptual de `DATABASE_MODEL.md` (Persoa, Receita, Ingrediente, ReceitaIngrediente, Adaptación, Fotografía, Versión, Información nutricional, Planificación, Evento de cociñado, Compartición).
-- [ ] Migrar os datos actuais de `js/datos/*.js` a Supabase como carga inicial.
-- [ ] Implementar historial e versionado (nunca eliminar coñecemento, según `DATABASE_MODEL.md` §Filosofía do modelo).
-- [ ] Conectar os endpoints de n8n definidos na Fase 2 a Supabase en vez de a datos de proba.
+> Contexto de partida (confirmado en `BACKEND_N8N_STATUS.md`, "Estado confirmado"): xa hai un backend n8n en produción con Supabase detrás, con táboas reais `qch_receitas`, `qch_ingredientes`, `qch_persoas`, `qch_estado`, `qch_sesions`, `qch_comparticions`. Pero `semana`, `neveira` e `cociñeiros` hoxe **non son táboas**: son claves soltas dentro do JSON de `qch_estado`. Esta fase é sobre completar o modelo relacional que falta, non sobre crear un backend dende cero.
+
+- [x] Deseñar o esquema relacional a partir do modelo conceptual de `DATABASE_MODEL.md` (Persoa, Receita, Ingrediente, ReceitaIngrediente, Adaptación, Fotografía, Versión, Información nutricional, Planificación, Evento de cociñado, Compartición) — `DATABASE_SCHEMA.sql`, deseñado para conviviren coas táboas de produción que xa existen, engadindo as que faltan.
+- [x] Preparar a carga inicial dos datos actuais de `js/datos/*.js` como SQL — `DATABASE_SEED.sql` (14 receitas, ingredientes, persoas e adaptacións, coherente coas 14 receitas xa confirmadas en produción).
+- [x] Deseñar historial e versionado sen eliminar coñecemento (`DATABASE_MODEL.md` §Filosofía do modelo) — táboa `qch_receita_versions` en `DATABASE_SCHEMA.sql`, cun `snapshot` completo por versión.
+- [ ] **Aplicar** `DATABASE_SCHEMA.sql` e `DATABASE_SEED.sql` contra a Supabase real e conectar os endpoints de n8n definidos na Fase 2 a estas táboas novas en vez de (ou ademais de) ao JSON de `qch_estado`. Isto é traballo de infraestrutura fóra deste repositorio (coordinado con quen administra o VPS/n8n/Supabase — mesmo patrón que a 2.8): este repo só pode deseñar e deixar listo o SQL, non executalo nin tocar os workflows.
 
 ---
 
