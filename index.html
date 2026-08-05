@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="gl" class="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Que comemos hoxe? Receitario da casa, menú semanal e neveira, cos axustes de cada comensal.">
+<meta name="theme-color" content="#FBF7F0">
+<title>Que comemos hoxe?</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23D6452F'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' fill='white' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap">
+
+<!-- Tailwind compílase no navegador. Vai vendorizado en local a propósito:
+     sen CDN, a app funciona sen conexión e sen paso de compilación. -->
+<script src="vendor/tailwind-browser.js"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.escuro, .escuro *));
+  @theme {
+    --color-crema:    #FBF7F0;
+    --color-papel:    #FFFFFF;
+    --color-tinta:    #191410;
+    --color-carbon:   #221C17;
+    --color-fondo:    #14100D;
+    --color-pemento:  #D6452F;
+    --color-loureiro: #3E6B4F;
+    --color-mel:      #E0A33C;
+    --color-neboa:    #E6DACA;
+    --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+    --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+</style>
+<link rel="stylesheet" href="css/estilos.css">
+<script src="vendor/gsap.min.js"></script>
+</head>
+
+<body class="bg-crema dark:bg-fondo font-sans text-tinta dark:text-crema antialiased min-h-screen pb-[72px] md:pb-0">
+
+<div id="cargando" aria-hidden="true">
+  <div class="marca-carga">?</div>
+</div>
+
+<noscript>
+  <div style="max-width:38rem;margin:4rem auto;padding:0 1.5rem;font-family:Georgia,serif;line-height:1.6">
+    <h1 style="font-size:1.75rem;margin-bottom:.5rem">Que comemos hoxe?</h1>
+    <p>Esta aplicación precisa JavaScript para funcionar. Actívao no navegador e volve cargar a páxina.</p>
+  </div>
+</noscript>
+
+<header id="cabeceira" class="sticky top-0 z-40 bg-crema/85 dark:bg-fondo/85 backdrop-blur-md border-b border-tinta/6 dark:border-white/8"></header>
+
+<main id="app"></main>
+
+<nav id="barra-inferior" class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-crema/95 dark:bg-fondo/95 backdrop-blur-md border-t border-tinta/8 dark:border-white/10 pb-[env(safe-area-inset-bottom)]" aria-label="Principal"></nav>
+
+<div id="modal" class="hidden"></div>
+
+<div id="toasts" class="fixed bottom-[84px] md:bottom-6 inset-x-0 z-[60] flex flex-col items-center gap-2 pointer-events-none px-4"></div>
+
+<!-- Scripts clásicos, non módulos ES: así a app tamén funciona abrindo
+     o ficheiro directamente co navegador (file://), sen servidor. -->
+<script src="js/datos/ingredientes.js"></script>
+<script src="js/datos/receitas.js"></script>
+<script src="js/datos/familia.js"></script>
+<script src="js/utilidades.js"></script>
+<script src="js/estado.js"></script>
+<script src="js/xerador.js"></script>
+<script src="js/vistas/comuns.js"></script>
+<script src="js/vistas/hoxe.js"></script>
+<script src="js/vistas/semana.js"></script>
+<script src="js/vistas/receitario.js"></script>
+<script src="js/vistas/neveira.js"></script>
+<script src="js/vistas/familia.js"></script>
+<script src="js/vistas/detalle.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
