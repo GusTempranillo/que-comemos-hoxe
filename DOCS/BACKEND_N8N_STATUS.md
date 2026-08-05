@@ -47,7 +47,7 @@ Ata que se activen os 10 workflows QCH en n8n, **calquera intento de login ou si
 
 ## O que aínda queda por confirmar
 
-- Se `js/api.js` necesita algún axuste para tolerar o 404 "cru" de n8n (forma distinta á de `{ erro, codigo, mensaxe }`) mentres os workflows non estean activos, ou se isto só importa durante a xanela de posta en marcha e desaparece en canto se activen.
+- Verificado dende o código (2026-08-05): `js/api.js` (liñas 51-61, función `chamar`) xa tolera o 404 "cru" de n8n sen romper. Como ese corpo non trae `erro: true`, cae na rama `else` e xera `{ codigo: 'erro_404', mensaxe: 'O servidor devolveu un erro inesperado' }`; a promesa rexéitase de forma controlada e a app segue traballando cos datos locais. **Non fai falta ningún cambio de código para esta xanela.**
 - Se hai algún plan/data para activar os 10 workflows en produción.
 - Comportamento exacto ante un `409` de conflito (segue sen resolver, ver `API_CONTRACT.md` §6).
 
