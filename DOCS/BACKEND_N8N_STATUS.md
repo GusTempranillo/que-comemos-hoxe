@@ -55,6 +55,13 @@ Fase 3 (o alcance desta migración) está completa e verificada de punta a punta
 - Os arrays estáticos de `js/datos/` **non se eliminaron**: seguen a ser o punto de partida antes de iniciar sesión e o modo de traballo cando non hai conexión ou aínda non se configurou ningunha URL. Tras un login e `prepararCasa()` correctos, `QCH.RECEITAS`, `QCH.INGREDIENTES` e `QCH.PERSOAS` pásanse a substituír en memoria polos datos remotos (ver `API_CONTRACT.md` §3).
 - `js/api.js` (liñas 51-61, función `chamar`) tolera corpos de erro que non sigan a forma do contrato (por exemplo un 404 cru de n8n) sen romper: xera `{ codigo: 'erro_' + status, ... }` e rexeita a promesa de forma controlada.
 
+## `POST /ia/axuda` (2026-08-06): a petición non recibe resposta ❌
+
+- Probado dende un navegador real (`qch.pages.dev`, sesión iniciada): ao pedir calquera das tres accións de IA dende a ficha de receita, a petición `POST /ia/axuda` sae ben formada (corpo, `Authorization`, ruta — confirmado na pestana de Rede do navegador, iniciador `api.js:51`), pero o servidor **nunca responde**: nin éxito nin erro. A chamada queda "pendente" indefinidamente.
+- Esta sandbox intentou tamén unha petición directa a `https://n8n.xosemiguel.eu/webhook/qch/ia/axuda`: o proxy de saída deste entorno a rexeita cun `403` de política de rede (só permite unha lista pechada de hosts; dominios arbitrarios coma este non están nela). Non é un dato sobre o estado do servidor de n8n — é unicamente unha limitación desta sandbox, xa documentada na cabeceira deste ficheiro.
+- Consecuencia práctica no frontend: `QCH.api.axudaIA()` agora chama con `esperaMs = 45000` (AbortController en `chamar()`, `js/api.js`), así que despois de 45 s a persoa ve un erro claro ("A IA está a tardar demasiado…") en vez dun xiro infinito. Isto arranxa a experiencia, pero **non arranxa a causa**: o workflow de n8n para esta ruta probablemente non ten un nodo de resposta ao final, ou está atascado agardando pola chamada ao modelo (Kimi/Moonshot).
+- Para diagnosticar isto fai falta acceso ao propio n8n (historial de execucións do workflow `/ia/axuda`), fóra do alcance deste repositorio.
+
 ## O que aínda queda por confirmar
 
 - Compartición: `POST /compartir` + páxina pública `/m/<token>` (`js/publico.js`), aínda non probada de punta a punta.
@@ -65,3 +72,4 @@ Fase 3 (o alcance desta migración) está completa e verificada de punta a punta
 
 1. Compartir un menú dende a app e abrir a URL pública nunha xanela sen sesión iniciada.
 2. Cambiar algo coa conexión desactivada (modo avión / DevTools "Offline"), reactivar a conexión, e comprobar que o cambio chega ao servidor sen ter que recargar.
+3. `POST /ia/axuda`: revisar en n8n o historial de execucións desa ruta para ver se o workflow remata (e por que non devolve resposta) ou queda colgado agardando pola IA.
