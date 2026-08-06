@@ -1,11 +1,16 @@
 /* Imaxe JPG do xantar do día, pensada para compartir fóra da app (WhatsApp,
    etc.) sen depender de ningunha ligazón nin do backend: todo se debuxa en
-   local nun <canvas> a partir dos datos que xa hai na app. */
+   local nun <canvas> a partir dos datos que xa hai na app. Deseño tipo
+   "cartel" de texto — sen fotos nin ilustracións, así que non depende de
+   que ningunha imaxe externa cargue nin de permisos CORS. */
 window.QCH = window.QCH || {};
 
 QCH.imaxeMenu = (function () {
-  const LARGO = 1080, ALTO = 1350, MARXE = 64;
+  const LARGO = 1080, MARXE = 84;
   let blobActual = null;
+
+  const EMOJI_CAT = { carne: '🥩', legume: '🫘', masa: '🥟', peixe: '🐟', sobremesa: '🍰', verdura: '🥕' };
+  const EMOJI_TIPO = { sen: '🚫', substituir: '🔄', prato: '🍽️' };
 
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -17,7 +22,8 @@ QCH.imaxeMenu = (function () {
     ctx.closePath();
   }
 
-  /* Devolve as liñas xa partidas para que caiban en `maxAncho`. */
+  /* Devolve as liñas xa partidas para que caiban en `maxAncho`. Precisa que
+     `ctx.font` xa estea posto antes de chamala. */
   function partirLiñas(ctx, texto, maxAncho) {
     const palabras = texto.split(/\s+/).filter(Boolean);
     const liñas = [];
@@ -35,58 +41,6 @@ QCH.imaxeMenu = (function () {
     return liñas;
   }
 
-  function cargarImaxeArte(receita) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject({ mensaxe: 'Non se puido debuxar a ilustración do prato' });
-      // QCH.arte() devolve un <svg> sen `xmlns`: válido inserido inline no
-      // HTML (que é o único uso que fai o resto da app), pero un documento
-      // SVG autónomo (coma o que precisa unha imaxe por URI de datos) esíxeo.
-      const svg = QCH.arte(receita).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-    });
-  }
-
-  /* Debuxar unha imaxe doutra orixe (a foto real do prato, nun CDN externo)
-     nun <canvas> "contamina" o lenzo se ese servidor non manda cabeceiras
-     CORS — despois xa non se pode exportar a JPG. Cárgase con
-     crossOrigin e compróbase de verdade antes de usala; se falla por
-     calquera motivo (sen CORS, sen rede, 404...), devolve null e o
-     chamador segue coa ilustración xerativa, coma xa fai a propia web
-     (`QCH.imaxePrato`: arte debaixo, foto enriba só se carga ben). */
-  function imaxeContaminaCanvas(img) {
-    try {
-      const proba = document.createElement('canvas');
-      proba.width = proba.height = 1;
-      proba.getContext('2d').drawImage(img, 0, 0, 1, 1);
-      proba.getContext('2d').getImageData(0, 0, 1, 1);
-      return false;
-    } catch (e) {
-      return true;
-    }
-  }
-
-  function cargarFotoSegura(url) {
-    return new Promise(resolve => {
-      if (!url) { resolve(null); return; }
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(imaxeContaminaCanvas(img) ? null : img);
-      img.onerror = () => resolve(null);
-      img.src = url;
-    });
-  }
-
-  /* Encaixa `img` en dw×dh coma `object-fit: cover`: recorta o exceso en
-     vez de deformar, igual que fai a tarxeta na web. */
-  function debuxarCover(ctx, img, dx, dy, dw, dh) {
-    const escala = Math.max(dw / img.width, dh / img.height);
-    const sw = dw / escala, sh = dh / escala;
-    const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
-    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
-  }
-
   function agardarFontes() {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
     // Non bloquear para sempre se as fontes web non chegan a cargar sen rede.
@@ -102,141 +56,178 @@ QCH.imaxeMenu = (function () {
     return comensais.map(id => { const p = QCH.persoa(id); return p ? p.nome : null; }).filter(Boolean).join(', ');
   }
 
-  async function debuxar(canvas, dia, receita, cociñeiro) {
-    const ctx = canvas.getContext('2d');
-    canvas.width = LARGO;
-    canvas.height = ALTO;
-
-    // Fondo: JPG non ten transparencia, así que hai que pintalo enteiro.
-    ctx.fillStyle = '#FBF7F0';
-    ctx.fillRect(0, 0, LARGO, ALTO);
-
+  /* Debuxa (ou só mide) o cartel enteiro. `pintar=false` executa toda a
+     mesma lóxica de medición de texto e avance de `y` pero omite calquera
+     operación que pinte de verdade no lenzo — así pódese calcular a altura
+     total que precisa o contido (que varía moito: unha familia con 8
+     comensais e moitas adaptacións precisa moito máis alto ca unha sen
+     ningunha) nunha primeira pasada, e reutilizar exactamente o mesmo
+     deseño para pintalo de verdade despois de fixar o tamaño real do
+     lenzo. */
+  function debuxarCartel(ctx, receita, cociñeiro, pintar) {
     let y = MARXE;
+    const centro = LARGO / 2;
+    const anchoTexto = LARGO - MARXE * 2;
 
-    ctx.fillStyle = '#D6452F';
-    ctx.font = '700 24px Inter, sans-serif';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText('MENÚ COMPARTIDO', MARXE, y + 22);
+    function liña(yy, cor, grosor) {
+      if (!pintar) return;
+      ctx.strokeStyle = cor || '#19141014';
+      ctx.lineWidth = grosor || 2;
+      ctx.beginPath(); ctx.moveTo(MARXE, yy); ctx.lineTo(LARGO - MARXE, yy); ctx.stroke();
+    }
 
-    ctx.fillStyle = '#19141099';
-    ctx.font = '500 26px Inter, sans-serif';
+    function centrado(texto, font, cor) {
+      ctx.font = font;
+      if (pintar) {
+        ctx.fillStyle = cor;
+        ctx.textAlign = 'center';
+        ctx.fillText(texto, centro, y);
+        ctx.textAlign = 'left';
+      }
+    }
+
+    // ---------- Cabeceira do cartel ----------
+    centrado('· · ·', '700 20px Inter, sans-serif', '#D6452F99');
+    y += 40;
+    centrado('MENÚ DE HOXE', '700 28px Inter, sans-serif', '#D6452F');
+    y += 38;
     const dataTxt = QCH.dataLonga();
-    ctx.fillText(dataTxt.charAt(0).toUpperCase() + dataTxt.slice(1), LARGO - MARXE - ctx.measureText(dataTxt).width, y + 20);
-
+    centrado(dataTxt.charAt(0).toUpperCase() + dataTxt.slice(1), '500 26px Inter, sans-serif', '#19141099');
+    y += 32;
+    liña(y); liña(y + 5, '#19141008', 2);
     y += 56;
 
-    // Ilustración do prato: a arte xerativa vai sempre debaixo coma base,
-    // e a foto real por riba se carga e non contamina o lenzo — mesma
-    // regra que xa segue `QCH.imaxePrato` na propia web.
-    const anchoArte = LARGO - MARXE * 2, altoArte = Math.round(anchoArte * 9 / 16);
-    const [imgArte, imgFoto] = await Promise.all([cargarImaxeArte(receita), cargarFotoSegura(receita.foto)]);
-    ctx.save();
-      roundRect(ctx, MARXE, y, anchoArte, altoArte, 28);
-      ctx.clip();
-      ctx.drawImage(imgArte, MARXE, y, anchoArte, altoArte);
-      if (imgFoto) debuxarCover(ctx, imgFoto, MARXE, y, anchoArte, altoArte);
-      ctx.restore();
-      y += altoArte + 44;
+    // ---------- Prato ----------
+    const emoxiCat = EMOJI_CAT[receita.cat] || '🍽️';
+    centrado(emoxiCat, '46px sans-serif', '#191410');
+    y += 68;
+    ctx.font = '700 56px Fraunces, Georgia, serif';
+    partirLiñas(ctx, receita.nome, anchoTexto).slice(0, 2).forEach(l => { centrado(l, ctx.font, '#191410'); y += 60; });
+    y += 8;
 
-      // Nome do prato
-      ctx.fillStyle = '#191410';
-      ctx.font = '700 58px Fraunces, Georgia, serif';
-      const liñasNome = partirLiñas(ctx, receita.nome, LARGO - MARXE * 2);
-      liñasNome.slice(0, 2).forEach(l => { ctx.fillText(l, MARXE, y); y += 62; });
-      y += 6;
+    if (receita.subtitulo) {
+      ctx.font = '400 27px Inter, sans-serif';
+      partirLiñas(ctx, receita.subtitulo, anchoTexto - 80).slice(0, 2).forEach(l => { centrado(l, ctx.font, '#19141099'); y += 34; });
+      y += 12;
+    }
 
-      // Subtítulo
-      if (receita.subtitulo) {
-        ctx.fillStyle = '#19141099';
-        ctx.font = '400 28px Inter, sans-serif';
-        const liñasSub = partirLiñas(ctx, receita.subtitulo, LARGO - MARXE * 2);
-        liñasSub.slice(0, 2).forEach(l => { ctx.fillText(l, MARXE, y); y += 36; });
-        y += 18;
-      }
+    // Meta: tempo, dificultade (chamas), vexetariana — centrado nunha fila
+    const lumes = '🔥'.repeat(receita.dificultade || 1);
+    const metaTxt = '⏱️ ' + QCH.fmtTempo(receita.tempo) + '    ' + lumes + ' ' + QCH.NIVEL_DIF[receita.dificultade] +
+      (receita.vexetariana ? '    🌱 Vexetariana' : '');
+    centrado(metaTxt, '600 25px Inter, sans-serif', '#191410CC');
+    y += 46;
 
-      // Meta: tempo, dificultade, vexetariana
-      ctx.font = '600 24px Inter, sans-serif';
-      const chips = [QCH.fmtTempo(receita.tempo), QCH.NIVEL_DIF[receita.dificultade]];
-      if (receita.vexetariana) chips.push('Vexetariana');
-      let x = MARXE;
-      chips.forEach(txt => {
-        const w = ctx.measureText(txt).width + 40;
-        ctx.fillStyle = '#19141010';
-        roundRect(ctx, x, y, w, 46, 23);
-        ctx.fill();
-        ctx.fillStyle = '#191410CC';
-        ctx.fillText(txt, x + 20, y + 31);
-        x += w + 14;
+    liña(y);
+    y += 48;
+
+    // ---------- Variacións por comensal (o diferenciador da app) ----------
+    ctx.font = '700 30px Fraunces, Georgia, serif';
+    if (pintar) { ctx.fillStyle = '#191410'; ctx.fillText('Na mesa', MARXE, y); }
+    y += 42;
+
+    const adaptacions = QCH.adaptacionsDe(receita.id);
+    if (!adaptacions.length) {
+      ctx.font = '400 25px Inter, sans-serif';
+      if (pintar) { ctx.fillStyle = '#19141088'; ctx.fillText('🍽️  Todos comen o mesmo prato.', MARXE, y); }
+      y += 30;
+    } else {
+      adaptacions.forEach(a => {
+        const emoxi = EMOJI_TIPO[a.tipo] || '•';
+        const texto = emoxi + '  ' + a.persoa.nome + ' — ' + a.texto;
+        ctx.font = '400 25px Inter, sans-serif';
+        partirLiñas(ctx, texto, anchoTexto).slice(0, 2).forEach((l, i) => {
+          if (pintar) { ctx.fillStyle = i === 0 ? '#191410' : '#19141088'; ctx.fillText((i === 0 ? l : '     ' + l), MARXE, y); }
+          y += 32;
+        });
       });
-      y += 46 + 40;
+    }
+    y += 24;
 
-      // Comensais e cociñeiro
-      const nomes = nomesComensais(QCH.estado.get().comensais);
-      ctx.fillStyle = '#191410';
-      ctx.font = '600 26px Inter, sans-serif';
-      ctx.fillText('Para ' + QCH.numComensais() + (QCH.numComensais() === 1 ? ' comensal' : ' comensais'), MARXE, y);
-      y += 34;
-      if (nomes) {
-        ctx.fillStyle = '#19141088';
-        ctx.font = '400 24px Inter, sans-serif';
-        partirLiñas(ctx, nomes, LARGO - MARXE * 2).slice(0, 2).forEach(l => { ctx.fillText(l, MARXE, y); y += 30; });
-      }
-      if (cociñeiro) {
-        y += 6;
-        ctx.fillStyle = '#19141088';
-        ctx.font = '400 24px Inter, sans-serif';
-        ctx.fillText('Cociña ' + cociñeiro.nome, MARXE, y);
-        y += 30;
-      }
-      y += 24;
+    liña(y);
+    y += 48;
 
-      // Liña separadora
-      ctx.strokeStyle = '#19141014';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(MARXE, y); ctx.lineTo(LARGO - MARXE, y); ctx.stroke();
-      y += 48;
+    // ---------- Comensais e cociñeiro ----------
+    const n = QCH.numComensais();
+    ctx.font = '600 26px Inter, sans-serif';
+    if (pintar) { ctx.fillStyle = '#191410'; ctx.fillText('👥  Para ' + n + (n === 1 ? ' comensal' : ' comensais'), MARXE, y); }
+    y += 34;
+    const nomes = nomesComensais(QCH.estado.get().comensais);
+    if (nomes) {
+      ctx.font = '400 24px Inter, sans-serif';
+      partirLiñas(ctx, nomes, anchoTexto).slice(0, 2).forEach(l => { if (pintar) { ctx.fillStyle = '#19141088'; ctx.fillText(l, MARXE, y); } y += 30; });
+    }
+    if (cociñeiro) {
+      y += 6;
+      ctx.font = '400 24px Inter, sans-serif';
+      if (pintar) { ctx.fillStyle = '#19141088'; ctx.fillText('👩‍🍳  Cociña ' + cociñeiro.nome, MARXE, y); }
+      y += 30;
+    }
+    y += 24;
 
-      // Nutrición: só se hai datos calculados na propia receita.
-      ctx.fillStyle = '#191410';
-      ctx.font = '700 32px Fraunces, Georgia, serif';
-      ctx.fillText('Nutrición', MARXE, y);
-      y += 44;
+    liña(y);
+    y += 48;
 
-      const n = receita.nutricion;
-      if (n) {
-        const campos = [
-          [n.calorias, 'kcal'], [n.proteinas, 'g prot.'], [n.hidratos, 'g hidr.'], [n.graxas, 'g graxas'], [n.fibra, 'g fibra']
-        ].filter(c => c[0] != null);
-        const gap = 16, anchoCaixa = (LARGO - MARXE * 2 - gap * (campos.length - 1)) / campos.length;
-        campos.forEach((c, i) => {
-          const cx = MARXE + i * (anchoCaixa + gap);
+    // ---------- Nutrición ----------
+    ctx.font = '700 30px Fraunces, Georgia, serif';
+    if (pintar) { ctx.fillStyle = '#191410'; ctx.fillText('🥗  Nutrición', MARXE, y); }
+    y += 44;
+
+    const nut = receita.nutricion;
+    if (nut) {
+      const campos = [
+        [nut.calorias, 'kcal'], [nut.proteinas, 'g prot.'], [nut.hidratos, 'g hidr.'], [nut.graxas, 'g graxas'], [nut.fibra, 'g fibra']
+      ].filter(c => c[0] != null);
+      const gap = 16, anchoCaixa = (anchoTexto - gap * (campos.length - 1)) / campos.length;
+      campos.forEach((c, i) => {
+        const cx = MARXE + i * (anchoCaixa + gap);
+        if (pintar) {
           ctx.fillStyle = '#19141008';
           roundRect(ctx, cx, y, anchoCaixa, 96, 18);
           ctx.fill();
           ctx.fillStyle = '#191410';
-          ctx.font = '700 30px Inter, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(String(c[0]), cx + anchoCaixa / 2, y + 42);
-          ctx.fillStyle = '#19141066';
-          ctx.font = '400 18px Inter, sans-serif';
-          ctx.fillText(c[1], cx + anchoCaixa / 2, y + 72);
-          ctx.textAlign = 'left';
-        });
-        y += 96;
-      } else {
-        ctx.fillStyle = '#19141066';
-        ctx.font = '400 24px Inter, sans-serif';
-        ctx.fillText('Información nutricional aínda non dispoñible.', MARXE, y - 4);
-        y += 20;
-      }
+        }
+        ctx.font = '700 30px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        if (pintar) ctx.fillText(String(c[0]), cx + anchoCaixa / 2, y + 42);
+        ctx.font = '400 18px Inter, sans-serif';
+        if (pintar) { ctx.fillStyle = '#19141066'; ctx.fillText(c[1], cx + anchoCaixa / 2, y + 72); }
+        ctx.textAlign = 'left';
+      });
+      y += 96;
+    } else {
+      ctx.font = '400 24px Inter, sans-serif';
+      if (pintar) { ctx.fillStyle = '#19141066'; ctx.fillText('Información nutricional aínda non dispoñible.', MARXE, y - 4); }
+      y += 20;
+    }
+    y += 40;
 
-      // Pé de páxina
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#19141055';
-      ctx.font = '600 24px Fraunces, Georgia, serif';
-      ctx.fillText('Que comemos hoxe?', LARGO / 2, ALTO - 46);
-      ctx.textAlign = 'left';
+    // ---------- Pé do cartel ----------
+    liña(y); liña(y + 5, '#19141008', 2);
+    y += 52;
+    centrado('✦ Que comemos hoxe? ✦', '600 24px Fraunces, Georgia, serif', '#19141055');
+    y += 20;
 
+    return y + MARXE - 20;
+  }
+
+  async function debuxar(canvas, receita, cociñeiro) {
+    // Primeira pasada, só para medir: canto máis xente e adaptacións, máis
+    // alto precisa ser o cartel. Un contexto calquera serve para medir
+    // texto, sen necesidade de que o lenzo teña xa o tamaño final.
+    const medidor = document.createElement('canvas').getContext('2d');
+    const altura = Math.ceil(debuxarCartel(medidor, receita, cociñeiro, false));
+
+    canvas.width = LARGO;
+    canvas.height = altura;
+    const ctx = canvas.getContext('2d');
+
+    // Fondo: JPG non ten transparencia, así que hai que pintalo enteiro.
+    ctx.fillStyle = '#FBF7F0';
+    ctx.fillRect(0, 0, LARGO, altura);
+    ctx.textBaseline = 'alphabetic';
+
+    debuxarCartel(ctx, receita, cociñeiro, true);
     return canvas;
   }
 
@@ -248,7 +239,7 @@ QCH.imaxeMenu = (function () {
     const cociñeiro = QCH.persoa(s.cociñeiros[QCH.slot(dia.id, 'xantar')]);
 
     const canvas = document.createElement('canvas');
-    return agardarFontes().then(() => debuxar(canvas, dia, receita, cociñeiro)).then(() =>
+    return agardarFontes().then(() => debuxar(canvas, receita, cociñeiro)).then(() =>
       new Promise(resolve => canvas.toBlob(blob => resolve({ canvas, blob }), 'image/jpeg', 0.92))
     );
   }
