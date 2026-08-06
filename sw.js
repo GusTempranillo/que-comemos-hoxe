@@ -1,7 +1,7 @@
 /* Service worker mínimo: garda o armazón da app para que funcione sen
    conexión. Só se rexistra cando a app se serve por http(s) — desde
    file:// os service workers non están permitidos. */
-const CACHE = 'qch-v4';
+const CACHE = 'qch-v5';
 
 const ARMAZON = [
   './',
@@ -23,6 +23,7 @@ const ARMAZON = [
   'js/vistas/neveira.js',
   'js/vistas/familia.js',
   'js/vistas/detalle.js',
+  'js/vistas/cociñar.js',
   'js/vistas/configuracion.js',
   'js/publico.js',
   'js/app.js',

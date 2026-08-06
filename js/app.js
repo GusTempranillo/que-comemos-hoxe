@@ -148,6 +148,15 @@ window.QCH = window.QCH || {};
     'abrir-selector': (el) => QCH.abrirSelector(el.getAttribute('data-dia'), el.getAttribute('data-comida')),
     'pechar-modal': () => QCH.modal.pechar(),
 
+    'abrir-modo-cociñar': (el) => QCH.abrirModoCociñar(el.getAttribute('data-id')),
+    'cociñar-anterior': () => QCH.cociñar && QCH.cociñar.anterior(),
+    'cociñar-seguinte': () => QCH.cociñar && QCH.cociñar.seguinte(),
+    'cociñar-ir': (el) => QCH.cociñar && QCH.cociñar.ir(parseInt(el.getAttribute('data-paso'), 10)),
+    'cociñar-rematar': () => QCH.cociñar && QCH.cociñar.rematar(),
+    'cociñar-temporizador': (el) => QCH.cociñar && QCH.cociñar.alternarTemporizador(
+      parseInt(el.getAttribute('data-paso'), 10), parseInt(el.getAttribute('data-min'), 10)
+    ),
+
     'escoller-prato': (el) => {
       const id = el.getAttribute('data-id');
       const dia = el.getAttribute('data-dia');
