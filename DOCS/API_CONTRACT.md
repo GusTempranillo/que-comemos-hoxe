@@ -34,8 +34,9 @@ Extraídos directamente de `QCH.api` en `js/api.js`. Esta é a lista completa �
 | `PUT /cociñeiros` | Si | `QCH.api.gardarCociñeiros()`, `sincronizar('cociñeiros', …)` | Substitúe o recurso enteiro. |
 | `POST /compartir` | Si | `QCH.api.compartir(dia)`, acción `compartir-menu` en `js/app.js` | Petición `{ dia }`; resposta debe traer `{ url }` (o frontend rexeita a promesa se non). |
 | `GET /publico/<token>` | Non | `QCH.api.menuPublico(token)`, `js/publico.js` | Resposta debe traer polo menos `{ receita }`; o frontend le tamén `comensaisPrevistos` e `nutricion` se existen. |
+| `POST /ia/axuda` | Si | `QCH.api.axudaIA(accion, receitaId, contexto)`, botón "Axuda da IA" en `js/vistas/detalle.js` | Petición `{ accion, receitaId, contexto }` (`contexto` inclúe polo menos `{ comensais }`); resposta `{ accion, modelo, proposta }`. `accion` é unha de `redactar`, `mellorar`, `nutricion`, `adaptar`, `sobras`, `lista_compra`, `recomendar` — o frontend hoxe só ofrece `mellorar`, `nutricion` e `adaptar` dende a ficha de receita. `proposta` non ten forma fixa: o frontend píntaa xenericamente (texto, listas ou pares clave/valor, todo escapado) sen asumir esquema. |
 
-**Non implementado no frontend**: non hai `POST /auth/logout` (pechar sesión é só local: borra o token en `localStorage`), nin ningunha chamada relacionada con IA (`/ia/propoñer-semana` ou similar) — se ese endpoint existe en n8n, o frontend aínda non o chama.
+**Non implementado no frontend**: non hai `POST /auth/logout` (pechar sesión é só local: borra o token en `localStorage`). Das accións de IA definidas no contrato, o frontend só chama a `mellorar`, `nutricion` e `adaptar`; `redactar`, `sobras`, `lista_compra` e `recomendar` non teñen UI aínda.
 
 ---
 
@@ -76,5 +77,7 @@ Se `login()` obtén sesión pero `prepararCasa()` falla nese intre, `login()` no
 - Comportamento exacto ante un `409` de conflito: hoxe trátase igual que calquera outro erro (queda pendente).
 
 Confirmado directamente por quen administra n8n (ver `BACKEND_N8N_STATUS.md`, "Estado confirmado"): a sesión dura 14 días; existe `POST /ia/propoñer-semana` (Moonshot/Kimi) pero está inactivo e o frontend aínda non o chama.
+
+`POST /ia/axuda` é un endpoint distinto, indicado como xa existente e activo ao encargar esta integración — o frontend (`QCH.api.axudaIA`) chámao coa forma descrita en §2, pero, coma o resto deste documento, isto describe só o que asume o código cliente: dende este repositorio non se pode confirmar de forma independente que a resposta real do servidor cumpra ese contrato en produción.
 
 Todo o relativo a **se o backend real (n8n + Supabase) está activo, publicado ou accesible dende `qch.pages.dev`** documéntase en `BACKEND_N8N_STATUS.md` — a día de hoxe os workflows QCH están **inactivos** e as 12 rutas devolven 404, aínda que o resto da infraestrutura (n8n, Supabase, CORS, despregue en Pages) está correctamente configurada.

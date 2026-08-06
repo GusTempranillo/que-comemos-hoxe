@@ -107,12 +107,17 @@ Obxectivo: construír a memoria permanente en Supabase.
 
 Obxectivo: converter a IA nun asistente culinario, integrada exclusivamente desde n8n (`ARCHITECTURE.md` §Intelixencia Artificial).
 
-- [ ] Redacción e mellora de textos de receitas.
-- [ ] Cálculo nutricional automático.
+- [x] Mellora de textos de receitas — botón "Axuda da IA" na ficha de receita (`js/vistas/detalle.js`, `QCH.abrirAxudaIA`), acción `mellorar`. Chama a `QCH.api.axudaIA()` → `POST /ia/axuda` (`js/api.js`).
+- [x] Cálculo nutricional — mesma UI, acción `nutricion`.
+- [x] Adaptación de receitas — mesma UI, acción `adaptar`, co contexto `{ comensais }` do día.
+- [ ] Redacción de receitas novas (acción `redactar` do contrato; sen UI aínda).
+- [ ] Aproveitamento de sobras (acción `sobras`; sen UI aínda).
+- [ ] Xeración da lista da compra (acción `lista_compra`; sen UI aínda).
+- [ ] Recomendacións (acción `recomendar`; sen UI aínda).
 - [ ] Proposta de menús equilibrados (complementando, non substituíndo, o xerador determinista actual de `js/xerador.js`).
-- [ ] Adaptación de receitas e aproveitamento de sobras.
-- [ ] Xeración da lista da compra.
-- [ ] Recordar sempre `COOKBOOK_MODEL.md` §Papel da IA: a IA nunca modifica unha receita sen confirmación explícita.
+- [x] `COOKBOOK_MODEL.md` §Papel da IA respectado: a resposta (`proposta`) só se amosa en pantalla (`renderizarPropostaIA`, xenérico e sempre escapado con `QCH.esc`); nada escribe automaticamente en `QCH.RECEITAS` nin en `QCH.estado`. Aplicar unha suxestión é sempre unha decisión manual do cociñeiro, fóra desta pantalla.
+
+> Pendente de confirmar (fóra deste repositorio, ver `BACKEND_N8N_STATUS.md`): que `POST /ia/axuda` estea realmente activo en produción e devolva respostas coa forma que asume `API_CONTRACT.md` §2.
 
 ---
 
@@ -120,8 +125,11 @@ Obxectivo: converter a IA nun asistente culinario, integrada exclusivamente desd
 
 Obxectivo: crear o diario da cociña (`DATABASE_MODEL.md` §Evento de cociñado).
 
-- [ ] Rexistro de cada elaboración: data, responsable, fotografías, cambios, valoración, comentarios.
-- [ ] Vista/historial por receita que amose eses eventos.
+- [x] Rexistro de cada elaboración: data, responsable, cambios, valoración, comentarios — `QCH.rexistrarCociñado`/`QCH.eventosDe` (`js/estado.js`), formulario en `QCH.abrirRexistroCociñado` (`js/vistas/detalle.js`), aberto tamén automaticamente ao rematar o modo cociñar (`js/vistas/cociñar.js`). Fotografías por evento aínda non implementadas (depende da Fase 6).
+- [x] Vista/historial por receita que amose eses eventos — bloque "Diario de cociñado" na ficha da receita, con "hai X días que non se cociña" derivado (`QCH.diasDendeUltimoCociñado`).
+- [x] Campo `historia` por receita (`COOKBOOK_MODEL.md` §Historia: quen a ensinou, cando chegou á familia) — engadido ás 14 receitas existentes (`js/datos/receitas.js`) e amosado na ficha.
+- [ ] Persistencia remota do diario: hoxe vive só en `localStorage` (`QCH.estado`, clave `diario`), coma o resto do estado antes da Fase 2. Non se engadiu a `QCH.estado.subscribe()` en `js/app.js` para sincronizar porque aínda non existe un endpoint n8n para iso — se se crea, engadir `'diario'` á lista de motivos que chaman a `QCH.api.sincronizar()`.
+- [ ] Versións do texto da receita (`COOKBOOK_MODEL.md` §Versións): non implementado — require antes unha función de edición de receitas que hoxe non existe en ningures da app. A táboa `qch_receita_versions` xa existe en Supabase (Fase 3) pero segue sen uso.
 
 ---
 

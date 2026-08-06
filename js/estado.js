@@ -71,7 +71,8 @@ function inicial() {
     cociñeiros: cociñeirosIniciais(),
     filtros: { texto: '', tempoMax: null, dificultade: null, cat: null, soNeveira: false },
     receitaAberta: null,
-    diaAberto: null
+    diaAberto: null,
+    diario: {}
   };
 }
 
@@ -104,7 +105,8 @@ QCH.estado = (function () {
     try {
       localStorage.setItem(CLAVE, JSON.stringify({
         tema: s.tema, comensais: s.comensais, neveira: s.neveira,
-        semana: s.semana, cociñeiros: s.cociñeiros, filtros: s.filtros
+        semana: s.semana, cociñeiros: s.cociñeiros, filtros: s.filtros,
+        diario: s.diario
       }));
     } catch (e) { /* sen persistencia, pero a app funciona igual */ }
   }
@@ -170,4 +172,36 @@ QCH.listaDaCompra = function () {
     if (falta > 0.001) compra.push({ id, cant: falta, unid: QCH.ingrediente(id).unid, cat: QCH.ingrediente(id).cat });
   });
   return compra.sort((a, b) => a.cat.localeCompare(b.cat) || QCH.ingrediente(a.id).nome.localeCompare(QCH.ingrediente(b.id).nome));
+};
+
+/* ---------- Diario de cociñado (Fase 5, memoria culinaria) ----------
+   Cada vez que se cociña algo créase un evento; nunca se edita nin se
+   borra un evento pasado, só se engaden novos (COOKBOOK_MODEL.md
+   §Eventos de cociñado). Vive en QCH.estado igual que semana/neveira,
+   pero non se envía a QCH.api.sincronizar: n8n aínda non ten un
+   endpoint para isto (ver DOCS/TASK_PLAN.md, Fase 5). */
+QCH.eventosDe = function (receitaId) {
+  const lista = (QCH.estado.get().diario || {})[receitaId] || [];
+  return lista.slice().sort((a, b) => b.data.localeCompare(a.data));
+};
+
+QCH.rexistrarCociñado = function (receitaId, evento) {
+  QCH.estado.update(s => {
+    if (!s.diario) s.diario = {};
+    if (!s.diario[receitaId]) s.diario[receitaId] = [];
+    s.diario[receitaId].push(Object.assign(
+      { id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) },
+      evento
+    ));
+  }, 'diario');
+};
+
+/* Días dende a última vez que se cociñou, ou null se nunca se rexistrou */
+QCH.diasDendeUltimoCociñado = function (receitaId) {
+  const eventos = QCH.eventosDe(receitaId);
+  if (!eventos.length) return null;
+  const ultimo = new Date(eventos[0].data + 'T00:00:00');
+  const hoxe = new Date();
+  hoxe.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((hoxe - ultimo) / 86400000));
 };

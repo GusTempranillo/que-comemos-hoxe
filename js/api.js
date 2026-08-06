@@ -204,6 +204,13 @@ QCH.api = (function () {
 
     /* Compartición — contrato §7. A lectura pública non leva sesión. */
     compartir: dia => chamar('POST', '/compartir', { dia }),
-    menuPublico: token => chamar('GET', '/publico/' + encodeURIComponent(token), undefined, true)
+    menuPublico: token => chamar('GET', '/publico/' + encodeURIComponent(token), undefined, true),
+
+    /* Axuda da IA — contrato §8. A IA nunca cambia unha receita por conta
+       propia (COOKBOOK_MODEL.md §Papel da IA): isto só devolve unha
+       proposta; decidir se se aplica é sempre cousa do cociñeiro. */
+    axudaIA: (accion, receitaId, contexto) => chamar('POST', '/ia/axuda', {
+      accion, receitaId, contexto: contexto || {}
+    })
   };
 })();
