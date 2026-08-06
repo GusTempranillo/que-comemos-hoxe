@@ -92,10 +92,14 @@ Principio guía (`ARCHITECTURE.md`): o frontend nunca fala directamente coa base
 
 Obxectivo: construír a memoria permanente en Supabase.
 
-- [ ] Deseñar o esquema relacional a partir do modelo conceptual de `DATABASE_MODEL.md` (Persoa, Receita, Ingrediente, ReceitaIngrediente, Adaptación, Fotografía, Versión, Información nutricional, Planificación, Evento de cociñado, Compartición).
-- [ ] Migrar os datos actuais de `js/datos/*.js` a Supabase como carga inicial.
-- [ ] Implementar historial e versionado (nunca eliminar coñecemento, según `DATABASE_MODEL.md` §Filosofía do modelo).
-- [ ] Conectar os endpoints de n8n definidos na Fase 2 a Supabase en vez de a datos de proba.
+> Contexto de partida (confirmado en `BACKEND_N8N_STATUS.md`, "Estado confirmado"): xa hai un backend n8n en produción con Supabase detrás, con táboas reais `qch_receitas`, `qch_ingredientes`, `qch_persoas`, `qch_estado`, `qch_sesions`, `qch_comparticions`. Pero `semana`, `neveira` e `cociñeiros` hoxe **non son táboas**: son claves soltas dentro do JSON de `qch_estado`. Esta fase é sobre completar o modelo relacional que falta, non sobre crear un backend dende cero.
+
+- [x] Deseñar o esquema relacional obxectivo a partir do modelo conceptual de `DATABASE_MODEL.md` (Persoa, Receita, Ingrediente, ReceitaIngrediente, Adaptación, Fotografía, Versión, Información nutricional, Planificación, Evento de cociñado, Compartición) — `DATABASE_SCHEMA.sql`. A revisión posterior demostrou que non convive directamente co esquema JSON de produción; precisa unha migración aditiva previa.
+- [x] Preparar a carga inicial de referencia dos datos actuais de `js/datos/*.js` como SQL — `DATABASE_SEED.sql` (14 receitas, ingredientes, persoas e adaptacións). Non é executable contra o esquema JSON actual sen a migración previa.
+- [x] Deseñar historial e versionado sen eliminar coñecemento (`DATABASE_MODEL.md` §Filosofía do modelo) — táboa `qch_receita_versions` en `DATABASE_SCHEMA.sql`, cun `snapshot` completo por versión.
+- [x] Deseñar a migración aditiva desde o esquema JSON real — `DATABASE_MIGRATION_FASE3.sql`. Non toca `qch_receitas`/`qch_ingredientes`/`qch_persoas`/`qch_estado` (seguen coma están, `GET /receitas` e `GET /persoas` xa funcionan lendo `data`); só crea as táboas de relación que faltan e as pobla por extracción (`jsonb_array_elements`/`jsonb_each`) dende `data->'ingredientes'` e `data->'adaptacions'`, con consultas de verificación (conta de filas e reconstrución por `jsonb_agg`) antes de dar nada por válido. `semana` e `cociñeiros` mantéñense en `qch_estado` por agora: non conteñen datas coas que poboar `qch_planificacion` sen inventar información.
+- [x] **Executar `DATABASE_MIGRATION_FASE3.sql` contra a instancia real de Supabase e revisar as súas consultas de verificación.** Feito polo usuario dende o VPS (2026-08-06): backup previo, migración aplicada contra o contedor `supabase-db` (Supabase autoaloxado en Docker), resultado idéntico á proba local (94 filas en `qch_receita_ingredientes`, 11 en `qch_adaptacions`, 0 diferenzas nas tres verificacións). Ver `BACKEND_N8N_STATUS.md` §"Aplicada en produción real".
+- [ ] Só se algunha funcionalidade futura (nutrición agregada, busca de ingredientes entre receitas, diario de cociñado) necesita que un workflow lea das táboas relacionais novas en vez de `data`: actualizar ese workflow entón, coa consulta de referencia de `DATABASE_MIGRATION_FASE3.sql` §5. `GET /receitas` e `GET /persoas` non cambian coa migración aditiva en si. Ver `BACKEND_N8N_STATUS.md` §"Fase 3: estado confirmado".
 
 ---
 

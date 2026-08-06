@@ -4,16 +4,20 @@
 window.QCH = window.QCH || {};
 
 QCH.modal = (function () {
-  let cont, previo = null;
+  let cont, previo = null, aoPechar = null;
 
   function nodo() {
     if (!cont) cont = document.getElementById('modal');
     return cont;
   }
 
-  function abrir(html) {
+  // aoPechar é opcional: para vistas coma o modo cociñar, que precisan
+  // liberar recursos (temporizadores, bloqueo de pantalla) sen importar
+  // como se pechou o modal (botón, fondo ou tecla Escape).
+  function abrir(html, aoPecharCallback) {
     const c = nodo();
     previo = document.activeElement;
+    aoPechar = aoPecharCallback || null;
     c.innerHTML = html;
     c.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
@@ -29,6 +33,7 @@ QCH.modal = (function () {
   function pechar() {
     const c = nodo();
     if (c.classList.contains('hidden')) return;
+    if (aoPechar) { aoPechar(); aoPechar = null; }
     c.classList.add('hidden');
     c.innerHTML = '';
     document.body.classList.remove('overflow-hidden');
@@ -111,7 +116,8 @@ QCH.abrirReceita = function (id) {
       '<div class="p-5 sm:p-7 space-y-6">' +
         '<div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">' +
           QCH.metaReceita(r) +
-          '<div class="[&>button]:w-full sm:[&>button]:w-auto">' +
+          '<div class="flex flex-col sm:flex-row gap-2 [&>button]:w-full sm:[&>button]:w-auto">' +
+            QCH.btn('Modo cociñar', 'abrir-modo-cociñar', { variante: 'secundario', icona: 'lume', datos: ' data-id="' + r.id + '"' }) +
             QCH.btn('Poñer na semana', 'poñer-na-semana', { variante: 'primario', icona: 'semana', datos: ' data-id="' + r.id + '"' }) +
           '</div>' +
         '</div>' +
