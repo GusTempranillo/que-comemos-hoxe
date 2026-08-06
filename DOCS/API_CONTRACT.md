@@ -39,9 +39,11 @@ Extraídos directamente de `QCH.api` en `js/api.js`. Esta é a lista completa �
 
 ---
 
-# 8. Escritura de catálogos (`receitas`/`ingredientes`/`persoas`) — pendente en n8n
+# 8. Escritura de catálogos (`receitas`/`ingredientes`/`persoas`) ✅ activos en n8n (2026-08-06)
 
-VISION.md §Usuarios: "Todas as persoas que acceden á aplicación poden crear, modificar e planificar" — non hai un perfil de só lectura. `js/catalogo.js` (novo) e os formularios en `js/vistas/formularios.js` xa implementan a edición completa no frontend: crear/editar ingredientes, crear/editar receitas (con versionado, nunca se sobrescribe sen deixar rastro) e crear/editar persoas e as súas adaptacións. Funciona hoxe en local (localStorage, coma a neveira) e sincroniza soa en canto existan estes tres endpoints en n8n — **non hai que tocar máis frontend cando se creen**:
+VISION.md §Usuarios: "Todas as persoas que acceden á aplicación poden crear, modificar e planificar" — non hai un perfil de só lectura. `js/catalogo.js` e os formularios en `js/vistas/formularios.js` implementan a edición completa no frontend: crear/editar ingredientes, crear/editar receitas (con versionado, nunca se sobrescribe sen deixar rastro) e crear/editar persoas e as súas adaptacións.
+
+**Confirmado directamente por quen administra n8n (Codex, 2026-08-06)**: os tres endpoints xa están activos en produción en `https://n8n.xosemiguel.eu/webhook/qch` — mesma base URL que o resto da API, mesmo esquema `Authorization: Bearer <token>`. `QCH.api.sincronizarCatalogo()` xa apunta exactamente a estas rutas dende que se escribiu (`chamadaPara()` en `js/api.js`); non fixo falta ningún cambio de código no frontend para activar a sincronización real.
 
 | Método e ruta | Bearer | Corpo esperado | Resposta esperada |
 |---|---:|---|---|

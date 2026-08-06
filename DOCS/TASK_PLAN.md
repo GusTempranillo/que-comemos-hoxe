@@ -86,7 +86,7 @@ Principio guía (`ARCHITECTURE.md`): o frontend nunca fala directamente coa base
 - [ ] Non hai forma de verificar dende este repositorio se a instancia de n8n está configurada, ten os workflows creados, ou está conectada a Supabase. `BACKEND_N8N_STATUS.md` documenta explicitamente este límite en vez de asumir un estado.
 - [ ] Isto segue sendo traballo de infraestrutura/configuración á parte, coordinado con quen administre o VPS/n8n/Supabase.
 
-## 2.9 · Edición de catálogos dende a interface (crear/modificar) ✅ (frontend); endpoints de n8n sen confirmar
+## 2.9 · Edición de catálogos dende a interface (crear/modificar) ✅
 
 VISION.md §Usuarios: "Todas as persoas que acceden á aplicación poden crear, modificar e planificar" — non hai perfil de só lectura. Ata este punto só se podía axustar cantidades na neveira e activar/desactivar comensais xa existentes; non se podía crear ingredientes, receitas nin persoas novas, nin editar as xa existentes, nin xestionar adaptacións dende a interface.
 
@@ -94,9 +94,9 @@ VISION.md §Usuarios: "Todas as persoas que acceden á aplicación poden crear, 
 - [x] `js/vistas/formularios.js` (novo): formularios modais para ingrediente, receita (nome, categoría, tempo, dificultade, racións, vexetariana, etiquetas, ingredientes e pasos dinámicos, truco) e persoa (nome, cor, nota, restricións, cociña), máis un editor de adaptacións por receita (tipo sen/substituír/prato) accesible dende a ficha de cada receita.
 - [x] Botóns novos: "Nova receita" e "Editar" na ficha de receita (`receitario.js`, `detalle.js`), "Adaptacións" na ficha de receita (`detalle.js`), "Novo ingrediente" e edición por fila na neveira (`neveira.js`), "Nova persoa" e "Editar" por tarxeta na familia (`familia.js`).
 - [x] Persistencia local-first: cada edición gárdase de inmediato en `localStorage` (`qch:catalogos:v1`, mesma clave que xa usaba a caché de catálogos remotos) para que sobreviva a recargar a páxina aínda sen sesión nin conexión — mesmo principio que xa usaba a neveira.
-- [x] Sincronización: `QCH.api.sincronizarCatalogo()` (novo en `js/api.js`) segue o mesmo patrón offline-first que `semana`/`neveira`/`cociñeiros` (cola de pendentes, reintento automático). Precisa `PUT /receitas`, `PUT /ingredientes` e `PUT /persoas` en n8n — especificados en `API_CONTRACT.md` §8 — que **aínda non existen** (só había `GET` de só lectura). Ata que existan, os cambios quedan gardados en local e pendentes de sincronizar; nada rompe, e en canto se creen os tres endpoints sincronizará soa sen tocar máis frontend.
+- [x] Sincronización: `QCH.api.sincronizarCatalogo()` (novo en `js/api.js`) segue o mesmo patrón offline-first que `semana`/`neveira`/`cociñeiros` (cola de pendentes, reintento automático). Precisaba `PUT /receitas`, `PUT /ingredientes` e `PUT /persoas` en n8n — especificados en `API_CONTRACT.md` §8.
 - [x] Proba manual de punta a punta en local (navegador headless, sen backend): crear receita nova, editala (xera versión), crear ingrediente novo, crear persoa nova, gardar unha adaptación — todo persiste tras recargar a páxina.
-- [ ] Pendente de confirmar contra produción: os tres `PUT` novos en n8n (ver `API_CONTRACT.md` §8) e a sincronización real destes catálogos, igual que xa estaba pendente para `semana`/`neveira`/`cociñeiros` antes de verificarse (§2.2).
+- [x] **`PUT /receitas`, `/ingredientes` e `/persoas` xa están activos en produción** (confirmado por Codex, 2026-08-06) — ver `BACKEND_N8N_STATUS.md`. Non fixo falta ningún cambio de frontend: `sincronizarCatalogo()` xa apuntaba a esas rutas exactas dende que se escribiu. Queda pendente unha proba de punta a punta nun navegador real contra produción (crear/editar algo, recargar, comprobar que persiste no servidor), igual que xa se fixo para `semana`/`neveira`/`cociñeiros` en §2.2.
 
 ---
 

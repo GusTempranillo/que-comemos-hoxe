@@ -60,7 +60,7 @@ Fase 3 (o alcance desta migración) está completa e verificada de punta a punta
 - Compartición: `POST /compartir` + páxina pública `/m/<token>` (`js/publico.js`), aínda non probada de punta a punta.
 - Comportamento offline-first en produción: cambiar algo sen conexión, recuperar conexión, e comprobar que `reintentarPendentes()` sincroniza correctamente (`API_CONTRACT.md` §4).
 - Comportamento exacto ante un `409` de conflito (segue sen resolver, ver `API_CONTRACT.md` §6).
-- **Novo (2026-08-06)**: `PUT /receitas`, `PUT /ingredientes` e `PUT /persoas` — endpoints de escritura para crear/editar receitas, ingredientes e persoas dende a interface (`TASK_PLAN.md` §2.9, `API_CONTRACT.md` §8). O frontend xa os chama cando hai sesión; en n8n **aínda non existen** (só había `GET` de só lectura destes tres recursos). Ata que se creen, estas edicións quedan en local (funcionan igual, non sincronizan) — non bloquea nada, pero é o seguinte paso de infraestrutura cando Codex teña dispoñibilidade.
+- ~~`PUT /receitas`, `PUT /ingredientes` e `PUT /persoas` sen crear~~ — **resolto (2026-08-06)**: Codex confirmou que os tres endpoints xa están activos en produción en `https://n8n.xosemiguel.eu/webhook/qch`, mesmo esquema `Authorization: Bearer <token>` có resto da API. `js/api.js` xa apuntaba exactamente a esas rutas, así que non fixo falta ningún cambio de frontend. Pendente: unha proba de punta a punta nun navegador real (crear/editar unha receita/ingrediente/persoa con sesión iniciada, recargar, comprobar que persiste no servidor) — mesmo tipo de verificación que xa se fixo para `semana`/`neveira`/`cociñeiros` en "Estado confirmado" máis arriba, aínda non feita para estes tres recursos novos.
 
 ## Como confirmar o resto
 
