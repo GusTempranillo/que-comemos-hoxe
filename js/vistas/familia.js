@@ -35,6 +35,9 @@ QCH.vistas.familia = (function () {
           '</div>' +
           '<p class="text-xs text-tinta/50 dark:text-crema/50 mt-0.5">' + QCH.esc(p.nota) + '</p>' +
         '</div>' +
+        '<button type="button" data-accion="editar-persoa" data-id="' + p.id + '" aria-label="Editar ' + QCH.esc(p.nome) + '" ' +
+          'class="shrink-0 w-9 h-9 rounded-full grid place-items-center text-tinta/35 hover:text-pemento hover:bg-pemento/10 dark:text-crema/35">' +
+          QCH.icona('editar', 'w-4 h-4', 2) + '</button>' +
         // O interruptor vese de 44×24, pero a zona que se toca é de 48×44.
         '<button type="button" data-accion="toggle-comensal" data-id="' + p.id + '" role="switch" aria-checked="' + activo + '" ' +
           'aria-label="' + QCH.esc(p.nome) + ' come na casa" ' +
@@ -83,10 +86,13 @@ QCH.vistas.familia = (function () {
       const totalAdap = QCH.PERSOAS.reduce((n, p) => n + Object.keys(p.adaptacions).length, 0);
 
       return '<div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">' +
-        '<header class="mb-7 anim-entrada">' +
-          '<h1 class="font-display text-3xl sm:text-4xl text-tinta dark:text-crema mb-2">A familia</h1>' +
-          '<p class="text-tinta/55 dark:text-crema/55 max-w-2xl">' + activos + ' de ' + QCH.PERSOAS.length + ' comensais na mesa e ' +
-            totalAdap + ' adaptacións apuntadas. Apaga a quen non coma na casa: as cantidades da compra recalcúlanse soas.</p>' +
+        '<header class="mb-7 anim-entrada flex flex-wrap items-start justify-between gap-4">' +
+          '<div>' +
+            '<h1 class="font-display text-3xl sm:text-4xl text-tinta dark:text-crema mb-2">A familia</h1>' +
+            '<p class="text-tinta/55 dark:text-crema/55 max-w-2xl">' + activos + ' de ' + QCH.PERSOAS.length + ' comensais na mesa e ' +
+              totalAdap + ' adaptacións apuntadas. Apaga a quen non coma na casa: as cantidades da compra recalcúlanse soas.</p>' +
+          '</div>' +
+          QCH.btn('Nova persoa', 'nova-persoa', { variante: 'primario', icona: 'mais' }) +
         '</header>' +
 
         '<div class="rounded-3xl bg-tinta dark:bg-carbon text-crema p-6 sm:p-7 mb-6 anim-entrada" style="animation-delay:.06s">' +
