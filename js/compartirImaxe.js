@@ -48,6 +48,45 @@ QCH.imaxeMenu = (function () {
     });
   }
 
+  /* Debuxar unha imaxe doutra orixe (a foto real do prato, nun CDN externo)
+     nun <canvas> "contamina" o lenzo se ese servidor non manda cabeceiras
+     CORS — despois xa non se pode exportar a JPG. Cárgase con
+     crossOrigin e compróbase de verdade antes de usala; se falla por
+     calquera motivo (sen CORS, sen rede, 404...), devolve null e o
+     chamador segue coa ilustración xerativa, coma xa fai a propia web
+     (`QCH.imaxePrato`: arte debaixo, foto enriba só se carga ben). */
+  function imaxeContaminaCanvas(img) {
+    try {
+      const proba = document.createElement('canvas');
+      proba.width = proba.height = 1;
+      proba.getContext('2d').drawImage(img, 0, 0, 1, 1);
+      proba.getContext('2d').getImageData(0, 0, 1, 1);
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function cargarFotoSegura(url) {
+    return new Promise(resolve => {
+      if (!url) { resolve(null); return; }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(imaxeContaminaCanvas(img) ? null : img);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  }
+
+  /* Encaixa `img` en dw×dh coma `object-fit: cover`: recorta o exceso en
+     vez de deformar, igual que fai a tarxeta na web. */
+  function debuxarCover(ctx, img, dx, dy, dw, dh) {
+    const escala = Math.max(dw / img.width, dh / img.height);
+    const sw = dw / escala, sh = dh / escala;
+    const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+  }
+
   function agardarFontes() {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
     // Non bloquear para sempre se as fontes web non chegan a cargar sen rede.
@@ -63,7 +102,7 @@ QCH.imaxeMenu = (function () {
     return comensais.map(id => { const p = QCH.persoa(id); return p ? p.nome : null; }).filter(Boolean).join(', ');
   }
 
-  function debuxar(canvas, dia, receita, cociñeiro) {
+  async function debuxar(canvas, dia, receita, cociñeiro) {
     const ctx = canvas.getContext('2d');
     canvas.width = LARGO;
     canvas.height = ALTO;
@@ -86,13 +125,16 @@ QCH.imaxeMenu = (function () {
 
     y += 56;
 
-    // Ilustración do prato
+    // Ilustración do prato: a arte xerativa vai sempre debaixo coma base,
+    // e a foto real por riba se carga e non contamina o lenzo — mesma
+    // regra que xa segue `QCH.imaxePrato` na propia web.
     const anchoArte = LARGO - MARXE * 2, altoArte = Math.round(anchoArte * 9 / 16);
-    return cargarImaxeArte(receita).then(img => {
-      ctx.save();
+    const [imgArte, imgFoto] = await Promise.all([cargarImaxeArte(receita), cargarFotoSegura(receita.foto)]);
+    ctx.save();
       roundRect(ctx, MARXE, y, anchoArte, altoArte, 28);
       ctx.clip();
-      ctx.drawImage(img, MARXE, y, anchoArte, altoArte);
+      ctx.drawImage(imgArte, MARXE, y, anchoArte, altoArte);
+      if (imgFoto) debuxarCover(ctx, imgFoto, MARXE, y, anchoArte, altoArte);
       ctx.restore();
       y += altoArte + 44;
 
@@ -195,8 +237,7 @@ QCH.imaxeMenu = (function () {
       ctx.fillText('Que comemos hoxe?', LARGO / 2, ALTO - 46);
       ctx.textAlign = 'left';
 
-      return canvas;
-    });
+    return canvas;
   }
 
   function xerar(diaId) {

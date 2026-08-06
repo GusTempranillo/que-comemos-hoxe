@@ -284,28 +284,6 @@ window.QCH = window.QCH || {};
       QCH.abrirConfiguracion();
     },
 
-    'compartir-menu': (el) => {
-      const dia = el.getAttribute('data-dia');
-      const receita = QCH.receita(QCH.estado.get().semana[QCH.slot(dia, 'xantar')]);
-      if (!receita) { QCH.toast('Primeiro escolle un prato para hoxe', 'aviso'); return; }
-      if (!QCH.api.estaAutenticada()) {
-        QCH.toast('Inicia sesión para crear a ligazón', 'aviso');
-        QCH.abrirConfiguracion();
-        return;
-      }
-      QCH.api.compartir(dia).then(resposta => {
-        if (!resposta || !resposta.url) return Promise.reject({ mensaxe: 'Non se recibiu a ligazón pública' });
-        const texto = 'Hoxe hai ' + receita.nome + ': ' + resposta.url;
-        if (navigator.share) return navigator.share({ title: 'Que comemos hoxe?', text: texto, url: resposta.url });
-        window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank', 'noopener');
-      }).catch(erro => {
-        /* Pechar o selector nativo de compartir non é un erro que haxa que
-           amosar; en calquera outro caso explicamos que a ligazón non saíu. */
-        if (erro && erro.name === 'AbortError') return;
-        QCH.toast((erro && erro.mensaxe) || 'Non se puido crear a ligazón', 'erro');
-      });
-    },
-
     'imaxe-menu': (el) => QCH.imaxeMenu.abrir(el.getAttribute('data-dia')),
     'descargar-imaxe-menu': (el) => QCH.imaxeMenu.descargar(el.getAttribute('data-ficheiro')),
     'compartir-imaxe-menu': (el) => QCH.imaxeMenu.compartirNativo(el.getAttribute('data-ficheiro')),
