@@ -96,7 +96,8 @@ VISION.md §Usuarios: "Todas as persoas que acceden á aplicación poden crear, 
 - [x] Persistencia local-first: cada edición gárdase de inmediato en `localStorage` (`qch:catalogos:v1`, mesma clave que xa usaba a caché de catálogos remotos) para que sobreviva a recargar a páxina aínda sen sesión nin conexión — mesmo principio que xa usaba a neveira.
 - [x] Sincronización: `QCH.api.sincronizarCatalogo()` (novo en `js/api.js`) segue o mesmo patrón offline-first que `semana`/`neveira`/`cociñeiros` (cola de pendentes, reintento automático). Precisaba `PUT /receitas`, `PUT /ingredientes` e `PUT /persoas` en n8n — especificados en `API_CONTRACT.md` §8.
 - [x] Proba manual de punta a punta en local (navegador headless, sen backend): crear receita nova, editala (xera versión), crear ingrediente novo, crear persoa nova, gardar unha adaptación — todo persiste tras recargar a páxina.
-- [x] **`PUT /receitas`, `/ingredientes` e `/persoas` xa están activos en produción** (confirmado por Codex, 2026-08-06) — ver `BACKEND_N8N_STATUS.md`. Non fixo falta ningún cambio de frontend: `sincronizarCatalogo()` xa apuntaba a esas rutas exactas dende que se escribiu. Queda pendente unha proba de punta a punta nun navegador real contra produción (crear/editar algo, recargar, comprobar que persiste no servidor), igual que xa se fixo para `semana`/`neveira`/`cociñeiros` en §2.2.
+- [x] **`PUT /receitas`, `/ingredientes` e `/persoas` xa están activos en produción** (confirmado por Codex, 2026-08-06) — ver `BACKEND_N8N_STATUS.md`. Non fixo falta ningún cambio de frontend: `sincronizarCatalogo()` xa apuntaba a esas rutas exactas dende que se escribiu.
+- [x] **Verificado de punta a punta en produción polo usuario** (2026-08-06), probando en `https://claude-proyecto-continuacion.qch.pages.dev` (preview do PR #6 contra o backend real): a edición de catálogos funciona. A Fase 2.9 está completa e verificada, igual que xa o estaba `semana`/`neveira`/`cociñeiros` (§2.2).
 
 ---
 
