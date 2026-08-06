@@ -295,8 +295,49 @@ window.QCH = window.QCH || {};
         else if (s.comensais.length > 1) s.comensais.splice(i, 1);
         else QCH.toast('Ten que quedar alguén na mesa', 'aviso');
       }, 'comensais');
+    },
+
+    /* ---- Edición de catálogos: VISION.md §Usuarios, calquera pode
+       crear/modificar, non hai perfís de só lectura ---- */
+    'ing-crear-abrir': () => QCH.abrirFormularioIngrediente(null, QCH.vistas.neveira.getBusca()),
+    'ing-editar-abrir': (el) => QCH.abrirFormularioIngrediente(el.getAttribute('data-id')),
+    'form-ingrediente-gardar': (el) => {
+      const id = el.getAttribute('data-id') || null;
+      const datos = {
+        nome: QCH.$('#ing-nome', el).value.trim(),
+        cat: QCH.$('#ing-cat', el).value,
+        unid: QCH.$('#ing-unid', el).value
+      };
+      if (!datos.nome) { QCH.toast('Ponlle un nome ao ingrediente', 'aviso'); return; }
+      const ing = id ? QCH.catalogo.editarIngrediente(id, datos) : QCH.catalogo.engadirIngrediente(datos);
+      QCH.modal.pechar();
+      QCH.toast((id ? 'Gardado: ' : 'Ingrediente creado: ') + ing.nome);
+    },
+
+    'nova-receita': () => QCH.abrirFormularioReceita(null),
+    'editar-receita': (el) => QCH.abrirFormularioReceita(el.getAttribute('data-id')),
+    'abrir-adaptacions': (el) => QCH.abrirAdaptacions(el.getAttribute('data-id')),
+
+    'nova-persoa': () => QCH.abrirFormularioPersoa(null),
+    'editar-persoa': (el) => QCH.abrirFormularioPersoa(el.getAttribute('data-id')),
+    'form-persoa-gardar': (el) => {
+      const id = el.getAttribute('data-id') || null;
+      const corEl = el.querySelector('input[name="per-cor"]:checked');
+      const datos = {
+        nome: QCH.$('#per-nome', el).value.trim(),
+        cor: corEl ? corEl.value : '#4E7A8C',
+        nota: QCH.$('#per-nota', el).value.trim(),
+        restricions: QCH.catalogo.listaTexto(QCH.$('#per-restricions', el).value),
+        cociña: QCH.$('#per-cociña', el).checked
+      };
+      if (!datos.nome) { QCH.toast('Ponlle un nome', 'aviso'); return; }
+      const persoa = id ? QCH.catalogo.editarPersoa(id, datos) : QCH.catalogo.engadirPersoa(datos);
+      QCH.modal.pechar();
+      QCH.toast((id ? 'Gardado: ' : 'Engadido á familia: ') + persoa.nome);
     }
   };
+
+  Object.assign(accions, QCH.accionsFormularioReceita, QCH.accionsAdaptacions);
 
   function cambiarNeveira(id, signo) {
     const paso = QCH.pasoUnidade(QCH.ingrediente(id).unid);

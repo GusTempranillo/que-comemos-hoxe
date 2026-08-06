@@ -39,6 +39,27 @@ Extraídos directamente de `QCH.api` en `js/api.js`. Esta é a lista completa �
 
 ---
 
+# 8. Escritura de catálogos (`receitas`/`ingredientes`/`persoas`) ✅ activos en n8n (2026-08-06)
+
+VISION.md §Usuarios: "Todas as persoas que acceden á aplicación poden crear, modificar e planificar" — non hai un perfil de só lectura. `js/catalogo.js` e os formularios en `js/vistas/formularios.js` implementan a edición completa no frontend: crear/editar ingredientes, crear/editar receitas (con versionado, nunca se sobrescribe sen deixar rastro) e crear/editar persoas e as súas adaptacións.
+
+**Confirmado directamente por quen administra n8n (Codex, 2026-08-06)**: os tres endpoints xa están activos en produción en `https://n8n.xosemiguel.eu/webhook/qch` — mesma base URL que o resto da API, mesmo esquema `Authorization: Bearer <token>`. `QCH.api.sincronizarCatalogo()` xa apunta exactamente a estas rutas dende que se escribiu (`chamadaPara()` en `js/api.js`); non fixo falta ningún cambio de código no frontend para activar a sincronización real.
+
+| Método e ruta | Bearer | Corpo esperado | Resposta esperada |
+|---|---:|---|---|
+| `PUT /receitas` | Si | Array completo coa forma de `QCH.RECEITAS` (substitúe a táboa enteira, igual có contrato xa existente de `PUT /semana`) | `200` con calquera corpo; o frontend non le a resposta, só comproba `res.ok` |
+| `PUT /ingredientes` | Si | Array completo coa forma de `QCH.INGREDIENTES` | idem |
+| `PUT /persoas` | Si | Array completo coa forma de `QCH.PERSOAS` (inclúe `adaptacions` por persoa) | idem |
+
+Notas para implementar en n8n/Supabase:
+
+- É un **reemprazo completo** da lista, non un `PATCH` incremental — mesmo patrón que xa usan `PUT /semana`, `/neveira` e `/cociñeiros` (ver §2). Isto simplifica moito o workflow: `DELETE` + `INSERT` (ou `UPSERT` por `id`) contra `qch_receitas`/`qch_ingredientes`/`qch_persoas` (as táboas `id text primary key, data jsonb not null` xa existentes, ver `BACKEND_N8N_STATUS.md`).
+- `QCH.api.sincronizarCatalogo()` (en `js/api.js`) segue exactamente o mesmo mecanismo offline-first que `semana`/`neveira`/`cociñeiros`: garda a última versión completa en `localStorage` (`qch:api:pendentes:v1`), reintenta ao recuperar conexión, e non fai fusión (`merge`) — un `409` ou calquera erro trátase coma un fallo de rede normal.
+- Cada receita que xa se editou polo menos unha vez leva un campo novo `versions`: array de snapshots completos anteriores (con `gardadaEn` en ISO 8601), gardado dentro do propio JSON da receita. Non fai falta unha táboa separada para que isto funcione — aínda que `qch_receita_versions` (creada na migración de Fase 3) sería o sitio natural se algún día se quere consultalo á parte de `data`.
+- Non hai validación de forma no frontend máis alá de "é un array de obxectos con `id` string" (`listaValida()` en `js/api.js`) — a validación de contido (nomes non baleiros, ids sen colisión, etc.) faise no propio formulario antes de enviar, pero o backend debería validar igual, coma sempre (`AI_GUIDELINES.md` §Seguridade: "validar sempre no backend").
+
+---
+
 # 3. O que fai `prepararCasa()` (chamado tras un login correcto)
 
 1. Fai en paralelo `GET /receitas`, `/ingredientes`, `/persoas`, `/semana`, `/neveira`, `/cociñeiros`.

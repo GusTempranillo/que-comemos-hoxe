@@ -93,6 +93,13 @@ QCH.api = (function () {
     aplicarCatalogos(ler(CLAVE_CATALOGOS, null));
   }
 
+  /* Chámase despois de cada edición local (QCH.catalogo) para que a receita,
+     ingrediente ou persoa nova sobreviva a recargar a páxina aínda sen
+     sesión ou sen conexión — o mesmo principio que xa usa a neveira. */
+  function gardarCatalogosCache() {
+    gardar(CLAVE_CATALOGOS, catalogosLocais());
+  }
+
   function datosEstadoValidos(valor) {
     return valor && typeof valor === 'object' && !Array.isArray(valor);
   }
@@ -101,8 +108,14 @@ QCH.api = (function () {
     if (recurso === 'semana') return chamar('PUT', '/semana', valor);
     if (recurso === 'neveira') return chamar('PUT', '/neveira', valor);
     if (recurso === 'cociñeiros') return chamar('PUT', '/cociñeiros', valor);
+    if (recurso === 'receitas') return chamar('PUT', '/receitas', valor);
+    if (recurso === 'ingredientes') return chamar('PUT', '/ingredientes', valor);
+    if (recurso === 'persoas') return chamar('PUT', '/persoas', valor);
     return Promise.reject({ codigo: 'recurso_invalido', mensaxe: 'Recurso de sincronización descoñecido' });
   }
+
+  const RECURSOS_ESTADO = ['semana', 'neveira', 'cociñeiros'];
+  const RECURSOS_CATALOGO = ['receitas', 'ingredientes', 'persoas'];
 
   /* Só se conserva a última versión completa de cada recurso: o contrato usa
      PUT completo e así non hai unha lista interminable de pequenos cambios. */
@@ -130,9 +143,19 @@ QCH.api = (function () {
     return procesarRecurso(recurso).then(() => ({ pendente: !!pendentes[recurso] })).catch(() => ({ pendente: true }));
   }
 
+  /* Igual ca sincronizar(), pero para os catálogos (receitas/ingredientes/
+     persoas): substitúense por lista completa (array), non por obxecto. */
+  function sincronizarCatalogo(recurso, lista) {
+    if (!config.token || !listaValida(lista)) return Promise.resolve({ pendente: false });
+    pendentes[recurso] = lista;
+    gardarPendentes();
+    if (navigator.onLine === false) return Promise.resolve({ pendente: true });
+    return procesarRecurso(recurso).then(() => ({ pendente: !!pendentes[recurso] })).catch(() => ({ pendente: true }));
+  }
+
   function reintentarPendentes() {
     if (!config.token || navigator.onLine === false) return Promise.resolve();
-    return Promise.all(['semana', 'neveira', 'cociñeiros'].map(recurso => procesarRecurso(recurso).catch(() => null)));
+    return Promise.all(RECURSOS_ESTADO.concat(RECURSOS_CATALOGO).map(recurso => procesarRecurso(recurso).catch(() => null)));
   }
 
   function prepararCasa() {
@@ -199,6 +222,8 @@ QCH.api = (function () {
     obterCociñeiros: () => chamar('GET', '/cociñeiros'),
     gardarCociñeiros: cociñeiros => chamar('PUT', '/cociñeiros', cociñeiros),
     sincronizar,
+    sincronizarCatalogo,
+    gardarCatalogosCache,
     reintentarPendentes,
     prepararCasa,
 

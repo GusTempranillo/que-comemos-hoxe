@@ -60,10 +60,13 @@ QCH.vistas.receitario = (function () {
       const hai = QCH.RECEITAS.filter(r => QCH.disponibilidade(r).completa).length;
 
       return '<div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">' +
-        '<header class="mb-6 anim-entrada">' +
-          '<h1 class="font-display text-3xl sm:text-4xl text-tinta dark:text-crema mb-2">O receitario</h1>' +
-          '<p class="text-tinta/55 dark:text-crema/55 max-w-2xl">' + QCH.RECEITAS.length + ' pratos da casa. ' +
-            (hai ? '<strong class="text-loureiro dark:text-[#8FC79E] font-semibold">' + hai + '</strong> podes facelos agora mesmo co que hai na neveira.' : '') + '</p>' +
+        '<header class="mb-6 anim-entrada flex flex-wrap items-start justify-between gap-4">' +
+          '<div>' +
+            '<h1 class="font-display text-3xl sm:text-4xl text-tinta dark:text-crema mb-2">O receitario</h1>' +
+            '<p class="text-tinta/55 dark:text-crema/55 max-w-2xl">' + QCH.RECEITAS.length + ' pratos da casa. ' +
+              (hai ? '<strong class="text-loureiro dark:text-[#8FC79E] font-semibold">' + hai + '</strong> podes facelos agora mesmo co que hai na neveira.' : '') + '</p>' +
+          '</div>' +
+          QCH.btn('Nova receita', 'nova-receita', { variante: 'primario', icona: 'mais' }) +
         '</header>' +
 
         '<div class="sticky top-[60px] z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-6 bg-crema/85 dark:bg-fondo/85 backdrop-blur-md border-b border-tinta/6 dark:border-white/8">' +

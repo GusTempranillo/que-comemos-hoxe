@@ -19,7 +19,8 @@ QCH.vistas.neveira = (function () {
     const btn = 'w-10 h-10 md:w-8 md:h-8 rounded-full grid place-items-center transition-colors shrink-0';
     return '<li class="flex items-center gap-1.5 sm:gap-2 py-1 border-b border-tinta/6 dark:border-white/8 last:border-0">' +
       '<span class="w-2 h-2 rounded-full shrink-0" style="background:' + QCH.CATEGORIAS[ing.cat].cor + '"></span>' +
-      '<span class="text-sm text-tinta dark:text-crema grow truncate min-w-0">' + QCH.esc(ing.nome) + '</span>' +
+      '<button type="button" data-accion="ing-editar-abrir" data-id="' + id + '" aria-label="Editar ' + QCH.esc(ing.nome) + '" ' +
+        'class="text-sm text-tinta dark:text-crema grow truncate min-w-0 text-left hover:text-pemento transition-colors">' + QCH.esc(ing.nome) + '</button>' +
       '<div class="flex items-center gap-0.5 sm:gap-1 shrink-0">' +
         '<button type="button" data-accion="nev-menos" data-id="' + id + '" aria-label="Quitar ' + QCH.esc(ing.nome) + '" ' +
           'class="' + btn + ' text-tinta/50 dark:text-crema/50 hover:bg-tinta/8 dark:hover:bg-white/10">' +
@@ -59,9 +60,12 @@ QCH.vistas.neveira = (function () {
       const cands = candidatos();
 
       return '<div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">' +
-        '<header class="mb-7 anim-entrada">' +
-          '<h1 class="font-display text-3xl sm:text-4xl text-tinta dark:text-crema mb-2">A neveira</h1>' +
-          '<p class="text-tinta/55 dark:text-crema/55 max-w-2xl">' + ids.length + ' cousas apuntadas. Non fai falta que estea perfecta: canto máis se pareza á realidade, mellores serán as suxestións.</p>' +
+        '<header class="mb-7 anim-entrada flex flex-wrap items-start justify-between gap-4">' +
+          '<div>' +
+            '<h1 class="font-display text-3xl sm:text-4xl text-tinta dark:text-crema mb-2">A neveira</h1>' +
+            '<p class="text-tinta/55 dark:text-crema/55 max-w-2xl">' + ids.length + ' cousas apuntadas. Non fai falta que estea perfecta: canto máis se pareza á realidade, mellores serán as suxestións.</p>' +
+          '</div>' +
+          QCH.btn('Novo ingrediente', 'ing-crear-abrir', { variante: 'secundario', icona: 'mais' }) +
         '</header>' +
 
         '<div class="grid lg:grid-cols-[1fr_340px] gap-6 items-start">' +
@@ -81,7 +85,12 @@ QCH.vistas.neveira = (function () {
                       '<span class="text-xs text-tinta/40 dark:text-crema/40">' + QCH.esc(QCH.CATEGORIAS[i.cat].nome) + '</span>' +
                       '</button>').join('') +
                   '</div>'
-                : (busca.trim() ? '<p class="absolute left-4 mt-2 text-xs text-tinta/40 dark:text-crema/40">Nada novo con ese nome.</p>' : '')) +
+                : (busca.trim()
+                    ? '<div class="absolute z-30 left-0 right-0 mt-1.5 rounded-2xl bg-papel dark:bg-carbon border border-tinta/10 dark:border-white/12 shadow-xl p-3 flex items-center justify-between gap-3">' +
+                        '<p class="text-xs text-tinta/50 dark:text-crema/50">Nada novo con ese nome.</p>' +
+                        QCH.btn('Crear "' + busca.trim() + '"', 'ing-crear-abrir', { variante: 'primario', pequeno: true, icona: 'mais' }) +
+                      '</div>'
+                    : '')) +
             '</div>' +
 
             (ids.length

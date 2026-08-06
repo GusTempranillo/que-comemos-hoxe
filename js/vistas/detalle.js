@@ -117,10 +117,17 @@ QCH.abrirReceita = function (id) {
         '<div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">' +
           QCH.metaReceita(r) +
           '<div class="flex flex-col sm:flex-row gap-2 [&>button]:w-full sm:[&>button]:w-auto">' +
+            QCH.btn('Editar', 'editar-receita', { variante: 'fantasma', icona: 'editar', datos: ' data-id="' + r.id + '"' }) +
+            QCH.btn('Adaptacións', 'abrir-adaptacions', { variante: 'secundario', icona: 'familia', datos: ' data-id="' + r.id + '"' }) +
             QCH.btn('Modo cociñar', 'abrir-modo-cociñar', { variante: 'secundario', icona: 'lume', datos: ' data-id="' + r.id + '"' }) +
             QCH.btn('Poñer na semana', 'poñer-na-semana', { variante: 'primario', icona: 'semana', datos: ' data-id="' + r.id + '"' }) +
           '</div>' +
         '</div>' +
+
+        (r.versions && r.versions.length
+          ? '<p class="text-xs text-tinta/40 dark:text-crema/40">Esta receita ten ' + r.versions.length +
+            (r.versions.length === 1 ? ' versión anterior gardada' : ' versións anteriores gardadas') + ' — nunca se perde o que había antes.</p>'
+          : '') +
 
         // As adaptacións van ARRIBA, antes dos ingredientes: é o que esta app
         // sabe e as demais non, e nun móbil o que queda abaixo non se le.
