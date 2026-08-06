@@ -1,16 +1,24 @@
 -- DATABASE_SEED.sql
--- Carga inicial para as táboas de DATABASE_SCHEMA.sql, xerada a man a
--- partir dos arrays estáticos actuais: js/datos/ingredientes.js,
--- js/datos/receitas.js e js/datos/familia.js. Son os mesmos datos que
--- hoxe arrancan a app sen conexión/sen sesión — esta carga fai que a
--- base de datos parta do mesmo punto.
+-- Carga inicial para as táboas relacionais COMENTADAS de
+-- DATABASE_SCHEMA.sql (qch_ingredientes/qch_persoas/qch_receitas en forma
+-- relacional), xerada a man a partir dos arrays estáticos actuais:
+-- js/datos/ingredientes.js, js/datos/receitas.js e js/datos/familia.js.
 --
--- Non executar directamente na produción actual. Alí qch_receitas,
--- qch_ingredientes e qch_persoas teñen a forma `id, data jsonb`; o schema
--- proposto non os transforma por usar `create table if not exists`. Este seed
--- só pode executarse despois dunha migración explícita que cree ou transforme
--- esas columnas relacionais. Ver DATABASE_SCHEMA.sql e
--- BACKEND_N8N_STATUS.md, "Fase 3: estado confirmado".
+-- NON executar contra a produción actual baixo ningunha circunstancia: alí
+-- qch_receitas, qch_ingredientes e qch_persoas xa existen coa forma
+-- `id, data jsonb` e xa teñen estes mesmos 14 datos (verificado en
+-- BACKEND_N8N_STATUS.md, "Estado confirmado" — GET /receitas devólveos hoxe
+-- correctamente). Inserir isto contra a produción fallaría (as columnas
+-- `nome`, `pasos`, etc. non existen nesas táboas) e, aínda que existisen,
+-- sería redundante: os datos xa están alí.
+--
+-- Este ficheiro só é útil se se crea unha instancia de Supabase nova dende
+-- cero seguindo o modelo relacional completo (as táboas comentadas de
+-- DATABASE_SCHEMA.sql). Para poboar as táboas de relación que faltan na
+-- produción REAL (qch_receita_ingredientes, qch_adaptacions...) sen tocar
+-- qch_receitas/qch_ingredientes/qch_persoas, usar
+-- DATABASE_MIGRATION_FASE3.sql, que extrae eses datos do `data jsonb` xa
+-- existente en vez de reinserilos á man coma fai este ficheiro.
 
 -- ============================================================
 -- Ingredientes (QCH.INGREDIENTES)
