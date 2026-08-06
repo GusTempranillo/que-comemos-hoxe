@@ -53,25 +53,14 @@ Os comensais nunca accederán á aplicación.
 
 # Compartición diaria
 
-Cada día poderá xerarse unha URL pública efémera para compartir por WhatsApp.
+Cada día pódese xerar unha imaxe (JPG) para compartir por WhatsApp, xerada enteiramente no dispositivo, sen pasar por ningún servidor.
 
 Características:
 
-- válida só durante ese día;
-- identificador aleatorio;
-- non indexable;
-- sen autenticación.
-
-A páxina mostrará:
-
-- fotografía do prato;
-- descrición;
-- ingredientes;
-- alérxenos;
-- información nutricional;
-- persoas previstas para comer;
-- equilibrio nutricional semanal e mensual;
-- observacións do día.
+- só texto e elementos decorativos, sen fotografía nin ilustración do prato;
+- inclúe nome do prato, variacións por comensal, cociñeiro do día e información nutricional aproximada;
+- descarga directa ou compartir nativo (Web Share API);
+- non require conexión nin xera ningunha URL pública.
 
 ---
 
@@ -162,17 +151,19 @@ Modo optimizado para a cociña:
 
 # Arquitectura (visión)
 
-O frontend será sempre unha aplicación estática, lixeira e rápida.
+O frontend será sempre unha aplicación estática, lixeira e rápida, servida por Cloudflare Pages.
 
-Toda a lóxica de negocio residirá en n8n.
+Toda a lóxica de negocio residirá nun Worker de Cloudflare, sen servidores propios que manter.
 
 Os datos almacenaranse en Supabase (PostgreSQL).
 
 As imaxes gardaranse en Cloudflare R2.
 
-O despregamento realizarase mediante Cloudflare Pages.
+O despregamento realizarase mediante Cloudflare Pages (frontend) e Wrangler/GitHub Actions (Worker).
 
-Toda integración con modelos de IA realizarase exclusivamente desde n8n.
+Toda integración con modelos de IA realizarase exclusivamente dende o Worker, nunca dende o navegador.
+
+Ver `ESTRUTURA.md` para o mapa técnico completo (endpoints, esquema de datos, despregamento).
 
 ---
 
