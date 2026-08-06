@@ -54,7 +54,10 @@ const P = {
   editar:    '<path d="M4 20.2h4.2L19.4 9a2.9 2.9 0 0 0-4.2-4.1L4 16.1z"/>',
   menu:      '<path d="M4 7h16M4 12h16M4 17h16"/>',
   info:      '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.2M12 7.9h.02"/>',
-  volver:    '<path d="M10 5.5L3.5 12 10 18.5"/><path d="M3.5 12H20"/>'
+  volver:    '<path d="M10 5.5L3.5 12 10 18.5"/><path d="M3.5 12H20"/>',
+  imaxe:     '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-5 4.5 4.5M14 14l1.8-1.8L20 16.5"/>',
+  descargar: '<path d="M12 4v11.5M7.5 11.5L12 16l4.5-4.5"/><path d="M4.5 18.5h15"/>',
+  compartir: '<circle cx="18" cy="6" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18" r="2.6"/><path d="M8.2 10.7l7.6-3.4M8.2 13.3l7.6 3.4"/>'
 };
 
 QCH.icona = function (nome, clase, grosor) {

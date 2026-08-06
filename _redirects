@@ -1,0 +1,6 @@
+# Cloudflare Pages serve ficheiros estáticos directamente; sen esta regra,
+# unha URL compartida coma /m/<token> non ten ficheiro físico e devolve un
+# 404 do propio Cloudflare antes de que cargue index.html e o router do
+# cliente (js/publico.js) chegue sequera a executarse. Isto é o que facía
+# que a ligazón de "Compartir" non funcionase.
+/m/*  /index.html  200

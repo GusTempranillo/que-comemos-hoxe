@@ -306,6 +306,10 @@ window.QCH = window.QCH || {};
       });
     },
 
+    'imaxe-menu': (el) => QCH.imaxeMenu.abrir(el.getAttribute('data-dia')),
+    'descargar-imaxe-menu': (el) => QCH.imaxeMenu.descargar(el.getAttribute('data-ficheiro')),
+    'compartir-imaxe-menu': (el) => QCH.imaxeMenu.compartirNativo(el.getAttribute('data-ficheiro')),
+
     'toggle-comensal': (el) => {
       const id = el.getAttribute('data-id');
       QCH.estado.update(s => {
