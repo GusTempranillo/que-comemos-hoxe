@@ -39,14 +39,24 @@ QCH.api = (function () {
   }
 
   /* Fai unha chamada á API. Devolve sempre JSON ou un erro coa forma do
-     contrato, incluso cando a rede falla antes de chegar a n8n. */
-  function chamar(metodo, ruta, corpo, publica) {
+     contrato, incluso cando a rede falla antes de chegar a n8n.
+     `esperaMs` é opcional: sen el, unha chamada que o servidor nunca
+     responde (nin éxito nin erro) queda pendente para sempre, coma
+     calquera fetch normal. Úsase na IA, onde iso xa se viu en produción. */
+  function chamar(metodo, ruta, corpo, publica, esperaMs) {
     if (!config.baseUrl && !publica) {
       return Promise.reject({ codigo: 'sen_configurar', mensaxe: 'Non hai URL de n8n configurada' });
     }
     const opcions = { method: metodo, headers: { 'Content-Type': 'application/json' } };
     if (!publica && config.token) opcions.headers.Authorization = 'Bearer ' + config.token;
     if (corpo !== undefined) opcions.body = JSON.stringify(corpo);
+
+    let temporizador = null;
+    if (esperaMs) {
+      const controlador = new AbortController();
+      opcions.signal = controlador.signal;
+      temporizador = setTimeout(() => controlador.abort(), esperaMs);
+    }
 
     return fetch(urlCompleta(ruta), opcions).then(res => (
       res.json().catch(() => null).then(datos => {
@@ -58,7 +68,12 @@ QCH.api = (function () {
         }
         return datos;
       })
-    )).catch(erro => Promise.reject(erroRede(erro)));
+    )).catch(erro => {
+      if (erro && erro.name === 'AbortError') {
+        return Promise.reject({ codigo: 'tempo_esgotado', mensaxe: 'A IA está a tardar demasiado en responder. Téntao de novo nun momento.' });
+      }
+      return Promise.reject(erroRede(erro));
+    }).finally(() => { if (temporizador) clearTimeout(temporizador); });
   }
 
   function listaValida(lista) {
@@ -208,9 +223,11 @@ QCH.api = (function () {
 
     /* Axuda da IA — contrato §8. A IA nunca cambia unha receita por conta
        propia (COOKBOOK_MODEL.md §Papel da IA): isto só devolve unha
-       proposta; decidir se se aplica é sempre cousa do cociñeiro. */
+       proposta; decidir se se aplica é sempre cousa do cociñeiro.
+       Con tempo límite: unha resposta de IA pode tardar, pero non debe
+       deixar o botón xirando para sempre se o servidor non contesta. */
     axudaIA: (accion, receitaId, contexto) => chamar('POST', '/ia/axuda', {
       accion, receitaId, contexto: contexto || {}
-    })
+    }, false, 45000)
   };
 })();
