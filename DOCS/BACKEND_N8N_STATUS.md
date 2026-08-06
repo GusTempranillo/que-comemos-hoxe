@@ -1,6 +1,6 @@
 # Backend n8n — estado dende o punto de vista do código
 
-> Este documento afirmaba orixinalmente só o que se podía verificar lendo o código deste repositorio, xa que a sandbox de Claude Code non ten acceso a n8n, Supabase nin infraestrutura fóra do repo. A sección **"Estado confirmado"** de máis abaixo é a excepción: recolle respostas dadas directamente por quen administra esa infraestrutura (Codex) e polo propio usuario probando en navegador real, e trátase como fonte fiable, non como dedución do código.
+> Este documento afirmaba orixinalmente só o que se podía verificar lendo o código deste repositorio, xa que a sandbox de Claude Code non ten acceso a n8n, Supabase nin infraestrutura fóra do repo. A sección **"Estado confirmado"** de máis abaixo é a excepción: recolle respostas dadas directamente por quen administra esa infraestrutura (Codex) e polo propio usuario probando en navegador real, e trátase como fonte fiable, non como dedución do código. **Isto xa non é sempre certo**: a execución do 2026-08-06 que arranxou `POST /ia/axuda` si tivo acceso directo ao VPS (Docker, n8n e o seu PostgreSQL, e o Supabase autoaloxado), polo que ese apartado non é dedución nin testemuño de terceiros, senón comprobación de primeira man. Comproba de que tipo é cada sección antes de fiarte dela.
 
 ## Estado confirmado (2026-08-05): backend en produción e verificado de punta a punta ✅
 
@@ -55,12 +55,100 @@ Fase 3 (o alcance desta migración) está completa e verificada de punta a punta
 - Os arrays estáticos de `js/datos/` **non se eliminaron**: seguen a ser o punto de partida antes de iniciar sesión e o modo de traballo cando non hai conexión ou aínda non se configurou ningunha URL. Tras un login e `prepararCasa()` correctos, `QCH.RECEITAS`, `QCH.INGREDIENTES` e `QCH.PERSOAS` pásanse a substituír en memoria polos datos remotos (ver `API_CONTRACT.md` §3).
 - `js/api.js` (liñas 51-61, función `chamar`) tolera corpos de erro que non sigan a forma do contrato (por exemplo un 404 cru de n8n) sen romper: xera `{ codigo: 'erro_' + status, ... }` e rexeita a promesa de forma controlada.
 
-## `POST /ia/axuda` (2026-08-06): a petición non recibe resposta ❌
+## `POST /ia/axuda` (2026-08-06): arranxado e verificado en navegador ✅
 
-- Probado dende un navegador real (`qch.pages.dev`, sesión iniciada): ao pedir calquera das tres accións de IA dende a ficha de receita, a petición `POST /ia/axuda` sae ben formada (corpo, `Authorization`, ruta — confirmado na pestana de Rede do navegador, iniciador `api.js:51`), pero o servidor **nunca responde**: nin éxito nin erro. A chamada queda "pendente" indefinidamente.
-- Esta sandbox intentou tamén unha petición directa a `https://n8n.xosemiguel.eu/webhook/qch/ia/axuda`: o proxy de saída deste entorno a rexeita cun `403` de política de rede (só permite unha lista pechada de hosts; dominios arbitrarios coma este non están nela). Non é un dato sobre o estado do servidor de n8n — é unicamente unha limitación desta sandbox, xa documentada na cabeceira deste ficheiro.
-- Consecuencia práctica no frontend: `QCH.api.axudaIA()` agora chama con `esperaMs = 45000` (AbortController en `chamar()`, `js/api.js`), así que despois de 45 s a persoa ve un erro claro ("A IA está a tardar demasiado…") en vez dun xiro infinito. Isto arranxa a experiencia, pero **non arranxa a causa**: o workflow de n8n para esta ruta probablemente non ten un nodo de resposta ao final, ou está atascado agardando pola chamada ao modelo (Kimi/Moonshot).
-- Para diagnosticar isto fai falta acceso ao propio n8n (historial de execucións do workflow `/ia/axuda`), fóra do alcance deste repositorio.
+Este apartado substitúe ao informe anterior ("a petición non recibe resposta ❌"), que quedou pendente porque aquela execución non tiña acceso a n8n. Esta si o tivo: n8n (`n8nio/n8n:2.30.5`, contedor `n8n-n8n-1`), o seu PostgreSQL e o Supabase autoaloxado. Todo o que segue está comprobado con peticións reais, e a proba final fíxoa o usuario **dende o navegador**, que é como se detectara o fallo orixinal.
+
+Workflow: **"Que comemos hoxe — POST /ia/axuda"**, id `QchAiAssistant01`.
+
+### Causa raíz
+
+Tres fallos independentes, non un só:
+
+1. **A variable `QCH_KIMI_MODEL` non existía.** A expresión do nodo era `{{ $vars.QCH_KIMI_MODEL || 'kimi-k2.5' }}`, así que sempre caía no literal `kimi-k2.5`. Ese modelo **non existe** nesta conta de Moonshot: `GET https://api.moonshot.ai/v1/models` devolve só `kimi-k3`, `kimi-k2.7-code`, `kimi-k2.7-code-highspeed` e `kimi-k2.6`. A credencial "Moonshot account" é **válida** (HTTP 200); o problema nunca foi a API key.
+
+2. **A temperatura depende do modo de razoamento, non do modelo.** O nodo `@n8n/n8n-nodes-langchain.moonshot` envía **sempre** o campo `thinking`, e por defecto `{"type":"disabled"}` (`message.operation.js`: `if (options.thinkingMode && !options.webSearch) ... else body.thinking = { type: 'disabled' }`). Comprobado contra a API:
+
+   | `thinking` | `temperature` admitida |
+   |---|---|
+   | `disabled` (o que envía o nodo por defecto) | **0.6** |
+   | `enabled` ou omitido | **1** |
+
+   Polo tanto o `0.6` que se puxera a man **xa era correcto**; o único erro real deste bloque era o id do modelo. Non hai que "corrixir" esa temperatura a 1 mentres `Thinking Mode` siga desactivado: devolve `400 Bad request`.
+
+3. **Editar o workflow na base de datos non abonda.** n8n 2.x separa *borrador* de *versión publicada*: `workflow_entity.nodes` é o borrador e a execución usa `workflow_entity.activeVersionId` → `workflow_history`. Actualizar só `workflow_entity` non cambia nada do que se executa. Hai que inserir unha versión nova en `workflow_history`, apuntar alí `activeVersionId` (rexistrando o cambio en `workflow_publish_history`) e reiniciar n8n para que rexistre de novo o webhook activo.
+
+### Cambios realizados
+
+| Onde | Cambio |
+|---|---|
+| Variable n8n | Créase `QCH_KIMI_MODEL = kimi-k3` (antes só existía `QCH_HOUSE_TOKEN`) |
+| `Kimi: asistente culinario` | `onError: continueErrorOutput` (antes non tiña saída de erro) |
+| `Kimi: asistente culinario` | Fallback do modelo `'kimi-k2.5'` → `'kimi-k3'` |
+| `Kimi: asistente culinario` | `maxTokens` mantense en **1800** (ver nota) |
+| `Kimi: asistente culinario` | `temperature` mantense en **0.6** (obrigado por `thinking: disabled`) |
+| `Preparar resposta IA` | O campo `modelo` devolvía o fallback `'kimi-k2.5'`; agora `'kimi-k3'` |
+| `Preparar erro IA` *(novo)* | Nodo Code na saída de erro → `Responder JSON`, devolve `502 {erro, codigo:'ia_erro', mensaxe}` |
+| `Ler ingredientes`, `Ler persoas`, `Ler estado` | `executeOnce: true` (ver rendemento) |
+
+**Nota sobre `maxTokens`:** durante a investigación subiuse a 4000 pensando que os tokens de razoamento consumían o orzamento. **Non é así**: o nodo envía `thinking: disabled`, logo non hai tokens de razoamento. Medido co prompt real, a resposta gasta `completion_tokens: 526` con `finish_reason: stop`, así que os 1800 orixinais xa deixan ~3,4× de marxe. Revertiuse a 1800: o cambio non tiña evidencia detrás.
+
+O nodo novo tolera que n8n entregue o erro como cadea ou como obxecto:
+
+```js
+const err = $json.error ?? {};
+const message = (typeof err === 'string' ? err : (err.message || err.description)) || 'A IA non puido xerar unha proposta';
+return [{ json: { status: 502, response: { erro: true, codigo: 'ia_erro', mensaxe: String(message) } } }];
+```
+
+### Fallo adicional atopado: multiplicación de items nas lecturas de Supabase
+
+As catro lecturas van **encadeadas** (`Ler receitas` → `Ler ingredientes` → `Ler persoas` → `Ler estado`) e o nodo Supabase execútase **unha vez por cada item de entrada**. Como cada un fai `getAll` da táboa enteira, o número de items multiplícase:
+
+| Nodo | Items de saída | Chamadas HTTP | Tempo |
+|---|---|---|---|
+| `Ler receitas` | 16 | 1 | 22 ms |
+| `Ler ingredientes` | 880 (16×55) | 16 | 133 ms |
+| `Ler persoas` | 7 040 (880×8) | 880 | 5 894 ms |
+| `Ler estado` | 21 120 (7 040×3) | 7 040 | 43 329 ms |
+
+Non era un problema de rede nin de Supabase: PostgREST responde en 2-32 ms para as catro táboas. O efecto era **~8 000 peticións HTTP redundantes por cada chamada** e, sobre todo, un prompt de **1 533 837 caracteres** (con 880 ingredientes e 7 040 persoas duplicados) enviado ao modelo en cada petición.
+
+Con `executeOnce: true` nos tres nodos posteriores ao primeiro:
+
+- Lecturas de Supabase: **49,4 s → 73 ms**
+- Prompt: **1 533 837 → 12 483 caracteres** (123× menos), coas contas correctas (16 receitas, 55 ingredientes, 8 persoas)
+- Extremo a extremo: **65 s → 17 s**
+
+**Isto non era cosmético.** `QCH.api.axudaIA()` chama con `esperaMs = 45000` (AbortController en `chamar()`, `js/api.js`), engadido precisamente cando se detectou o colgado. Cos 65 s previos o frontend **abortaba sempre** aos 45 s: aínda co modelo arranxado, a funcionalidade non podería ter funcionado nunca dende a app. Os ~17 s actuais entran con marxe (~2,4×).
+
+### Probas executadas
+
+Contra `https://n8n.xosemiguel.eu/webhook/qch/ia/axuda` en produción, con sesión real de `qch_sesions`:
+
+| Caso | Resultado |
+|---|---|
+| `{"accion":"mellorar","receitaId":"tortilla","contexto":{"comensais":["isabel","xoan"]}}` | **200**, `{accion, modelo:"kimi-k3", proposta}` — ~17 s |
+| `accion:"adaptar"` / `accion:"nutricion"` / `accion:"recomendar"` | 200, forma correcta, IDs existentes |
+| Modelo inexistente forzado (`QCH_KIMI_MODEL` a un valor falso) | **502** `{erro:true, codigo:"ia_erro", ...}` en **0,7 s** — antes deste arranxo a petición quedaba colgada para sempre |
+| Sen cabeceira `Authorization` | 401 `token_ausente` |
+| `accion:"bailar"` | 400 `accion_invalida` |
+| `receitaId:"non_existe"` | 404 `receita_non_atopada` |
+| Preflight `OPTIONS` e resposta `POST` con `Origin: https://qch.pages.dev` | `Access-Control-Allow-Origin` correcto e **sen duplicar** (o fallo de CORS de 2026-08-05 non se repite aquí) |
+| **Navegador real** (`qch.pages.dev`, sesión iniciada, accións de IA dende a ficha de receita) | **Funciona** — confirmado polo usuario |
+
+A proposta devolta respecta as restricións reais da base de datos (p. ex. propón a cebola aparte porque Isabel a ten marcada como restrición en `qch_persoas`), o que confirma que o contexto chega ben ao modelo.
+
+### Riscos e cousas a vixiar
+
+- **Latencia ~17 s, contra un timeout de cliente de 45 s.** É a chamada á IA e non se pode baixar moito co nodo actual: `kimi-k3` razoa sempre e o nodo non expón o nivel de esforzo. A marxe é cómoda pero non enorme; se algún día se activa `Thinking Mode` ou se engade moito contexto ao prompt, hai que revisar ese 45 s de `js/api.js` antes de que volva aparecer o abort.
+- **`temperature` e `thinking` van atados.** Se alguén activa `Thinking Mode` no nodo, hai que subir `temperature` a 1 no mesmo cambio, ou romperá con `400`.
+- **A licenza de n8n caduca o 2026-08-15.** As *Variables* son función de licenza; se caduca, `$vars.QCH_KIMI_MODEL` deixaría de resolverse. Por iso o fallback do nodo se deixou en `'kimi-k3'` e non nun valor inválido: aínda que se perdan as variables, o workflow segue funcionando.
+- **`kimi-k2.5` non existe e `kimi-k3` pode desaparecer igual.** Moonshot renomea modelos; se volve aparecer un 404, o primeiro que hai que mirar é `GET https://api.moonshot.ai/v1/models` e actualizar a variable `QCH_KIMI_MODEL` (non fai falta tocar o workflow).
+- **Editar por SQL require publicar.** Calquera cambio futuro feito directamente na base de datos ten que crear versión nova en `workflow_history` e mover `activeVersionId`; se non, non ten efecto ningún aínda que `workflow_entity` se vexa correcto.
+- **`qch_receitas` ten hoxe 16 receitas**, non 14 como di a sección "Estado confirmado" de máis arriba.
+- **Versión publicada actual: `b4a72e30-6c19-4d85-9f03-1a8de5c26b47`.** Copia de seguridade do estado **previo** a todos estes cambios: `workflow_history.versionId = 3094f88d-f745-4761-aae4-6bb4c9271712`.
+- **Non restaurar `e8d0a5c1`** dende o historial da UI se non se quere `maxTokens = 4000`: é idéntica á activa agás nese valor. Publicáronse ademais dúas versións intermedias durante a investigación (`a1f7c3d2`, con `temperature = 1`, que devolvía `400` en cada petición; e `c2e9b4a6`, sen `executeOnce`, que tardaba 65 s e superaba o timeout de 45 s do cliente); **borráronse as dúas** de `workflow_history` precisamente para que ninguén as restaure por erro. As súas entradas seguen en `workflow_publish_history` como rastro do que pasou.
 
 ## O que aínda queda por confirmar
 
@@ -72,4 +160,4 @@ Fase 3 (o alcance desta migración) está completa e verificada de punta a punta
 
 1. Compartir un menú dende a app e abrir a URL pública nunha xanela sen sesión iniciada.
 2. Cambiar algo coa conexión desactivada (modo avión / DevTools "Offline"), reactivar a conexión, e comprobar que o cambio chega ao servidor sen ter que recargar.
-3. `POST /ia/axuda`: revisar en n8n o historial de execucións desa ruta para ver se o workflow remata (e por que non devolve resposta) ou queda colgado agardando pola IA.
+*(O punto sobre `POST /ia/axuda` que había aquí xa está resolto — ver o apartado "arranxado e verificado en navegador ✅" máis arriba.)*
