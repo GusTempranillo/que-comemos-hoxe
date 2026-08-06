@@ -150,9 +150,71 @@ A proposta devolta respecta as restricións reais da base de datos (p. ex. prop�
 - **Versión publicada actual: `b4a72e30-6c19-4d85-9f03-1a8de5c26b47`.** Copia de seguridade do estado **previo** a todos estes cambios: `workflow_history.versionId = 3094f88d-f745-4761-aae4-6bb4c9271712`.
 - **Non restaurar `e8d0a5c1`** dende o historial da UI se non se quere `maxTokens = 4000`: é idéntica á activa agás nese valor. Publicáronse ademais dúas versións intermedias durante a investigación (`a1f7c3d2`, con `temperature = 1`, que devolvía `400` en cada petición; e `c2e9b4a6`, sen `executeOnce`, que tardaba 65 s e superaba o timeout de 45 s do cliente); **borráronse as dúas** de `workflow_history` precisamente para que ninguén as restaure por erro. As súas entradas seguen en `workflow_publish_history` como rastro do que pasou.
 
+## `GET /publico` (2026-08-06): a ligazón compartida daba 404 ❌ → arranxado ✅
+
+Síntoma: abrir `https://qch.pages.dev/m/m_mshuvrcp_h6kw3oyi9ur` nunha ventá de incógnito non amosaba o menú.
+
+### Causa: n8n non pode resolver a ruta bonita
+
+Cloudflare Pages serve ben `/m/<token>` (HTTP 200, entrega `index.html`), e o token existía en `qch_comparticions` sen caducar. O que fallaba era a chamada interna: `GET /webhook/qch/publico/<token>` devolvía **404 do propio n8n** (`"The requested webhook ... is not registered"`), aínda estando o workflow activo e a fila ben rexistrada en `webhook_entity` (`qch/publico/:token`, `pathLength=3`).
+
+O motivo está en `dist/webhooks/webhook.service.js`:
+
+```js
+async findCached(method, path) {
+    const staticWebhook = await this.findCachedStaticWebhook(method, path);
+    if (staticWebhook) return staticWebhook;
+    return await this.findDynamicWebhook(path, method);
+}
+
+async findDynamicWebhook(path, method) {
+    const [uuidSegment, ...otherSegments] = path.split('/');
+    const dynamicWebhooks = await this.webhookRepository.findBy({
+        webhookId: uuidSegment,          // ← o PRIMEIRO segmento búscase como webhookId
+        method,
+        pathLength: otherSegments.length,
+    });
+```
+
+`findWebhook()` só chama a `findCached()`: **non hai terceira rama**. Para `qch/publico/<token>` o match estático falla (a fila é literalmente `qch/publico/:token`) e o dinámico busca `webhookId='qch'`, que non existe → 404. Coa URL `/<webhookId>/qch/publico/<token>` si funciona (comprobado: HTTP 200). O índice da táboa é `(webhookId, method, pathLength)`: o esquema está construído arredor desta busca.
+
+Non é un fallo noso de configuración: a petición atravesa Cloudflare e Nginx e chega a n8n (o 404 é JSON de n8n, coa súa propia mensaxe de axuda), e polos mesmos proxies pasan sen problema os outros webhooks. É **deseño de n8n**, non documentado: [a doc do nodo Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/) lista os formatos `/:variable` pero non di nada da URL de produción resultante. Está reportado en [n8n-io/n8n#7166](https://github.com/n8n-io/n8n/issues/7166) ("Webhook keeps uuid for custom URI in case of :parameters provided"), **pechado como "not planned"**.
+
+### Arranxo: ruta estática + query param
+
+| Onde | Cambio |
+|---|---|
+| Workflow `CHvwM9HpXjPp4APX` | `path`: `qch/publico/:token` → `qch/publico`; nodo renomeado `GET /publico/:token` → `GET /publico` |
+| `Buscar ligazón pública` | Filtro: `$node[...].json.params.token` → `$node["GET /publico"].json.query.token` |
+| `js/api.js` | `menuPublico`: `/publico/<token>` → `/publico?token=<token>` |
+| `webhook_entity` | Borrada a fila obsoleta `qch/publico/:token`, que n8n non purga ao republicar |
+
+**A ligazón que se comparte, `/m/<token>`, non cambia.** Tampouco cambia a sinatura `QCH.api.menuPublico(token)`: só cambia unha liña dentro de `js/api.js`.
+
+### Por que isto e non un rewrite en Nginx
+
+A alternativa era que Nginx reescribise `/webhook/qch/publico/<token>` a `/webhook/5d003863-…/qch/publico/<token>`, deixando o contrato intacto e sen despregar nada. Descartouse:
+
+- **O que se "encapsularía" é un identificador máxico.** O `webhookId` é estado interno de n8n, xerado ao crear o nodo. Meter ese UUID en Nginx non illa o acoplamento con n8n: faino máis profundo e móveo fóra do control de versións, onde ninguén o vai buscar.
+- **Rompería en silencio.** Se alguén recrea ou reimporta o nodo webhook, n8n xera outro `webhookId` e o rewrite deixa de coincidir. Nada no repositorio revelaría a causa.
+- **Precedente propio.** O fallo de CORS de 2026-08-05 (cabeceira duplicada) veu exactamente de repartir comportamento entre Nginx e n8n. Repetir o patrón para gañar unha liña non compensa.
+- **Claridade.** Con esta solución, `js/api.js`, o workflow e `API_CONTRACT.md` din os tres o mesmo e están os tres en git. Con Nginx, os tres dirían `/publico/<token>` e funcionaría por algo invisible dende calquera deles.
+- **Migración futura.** Se algún día isto sae de n8n (a Supabase Edge Functions, por exemplo), un query param entende o calquera backend. Cun rewrite haberá que lembrar borralo, e se non se borra reescribirá cara a unha ruta que o novo backend descoñece.
+- **O contrato que importa xa está protexido.** `js/api.js` é o único sitio que chama a `fetch()` (ver `CLAUDE.md`): xa é a capa de illamento fronte ao backend. O sitio correcto para absorber unha rareza do provedor é esa capa, en código e versionada — non un proxy.
+
+### Probas executadas
+
+| Caso | Resultado |
+|---|---|
+| `GET /webhook/qch/publico?token=m_mshuvrcp_h6kw3oyi9ur` | **200** co payload correcto |
+| Token inexistente | **404** `{erro:true, codigo:"recurso_non_atopado"}` (JSON, non HTML) |
+| Preflight `OPTIONS` con `Origin: https://qch.pages.dev` | 204, `Access-Control-Allow-Origin` correcto (`js/api.js` manda `Content-Type` mesmo en GET, así que hai preflight) |
+| `GET` real con `Origin` | 200, `Access-Control-Allow-Origin` presente e **sen duplicar** |
+| Webhooks dinámicos restantes na instancia | **0** — era o único |
+
 ## O que aínda queda por confirmar
 
-- Compartición: `POST /compartir` + páxina pública `/m/<token>` (`js/publico.js`), aínda non probada de punta a punta.
+- Compartición: verificado o backend de punta a punta; falta a comprobación final en navegador de incógnito, que require despregar `js/api.js` en Cloudflare Pages.
 - Comportamento offline-first en produción: cambiar algo sen conexión, recuperar conexión, e comprobar que `reintentarPendentes()` sincroniza correctamente (`API_CONTRACT.md` §4).
 - Comportamento exacto ante un `409` de conflito (segue sen resolver, ver `API_CONTRACT.md` §6).
 

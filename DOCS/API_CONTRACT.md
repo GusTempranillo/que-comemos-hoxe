@@ -10,7 +10,7 @@
 
 - **Base URL**: gardada en `localStorage` (clave `qch:api:v1`, campo `baseUrl`), configurable dende o modal de Configuración (`js/vistas/configuracion.js`). Valor por defecto no código: `https://n8n.xosemiguel.eu/webhook/qch` (constante `URL_PREDETERMINADA`).
 - **Formato**: JSON en ida e volta. `Content-Type: application/json`.
-- **Autenticación**: cabeceira `Authorization: Bearer <token>` en todas as chamadas privadas. As únicas chamadas que `js/api.js` fai sen esa cabeceira son `POST /auth/login` e `GET /publico/<token>`.
+- **Autenticación**: cabeceira `Authorization: Bearer <token>` en todas as chamadas privadas. As únicas chamadas que `js/api.js` fai sen esa cabeceira son `POST /auth/login` e `GET /publico?token=<token>`.
 - **Erros**: `js/api.js` agarda que o corpo de erro sexa JSON coa forma `{ erro: true, codigo, mensaxe }`; se non pode parsear JSON, xera un erro xenérico `{ codigo: 'erro_' + status, mensaxe: '...' }` no propio frontend. Se falla a rede antes de chegar ao servidor, xera `{ codigo: 'rede', mensaxe: 'Non se puido contactar co servidor' }`.
 - **Ids**: os mesmos ids curtos en minúsculas que xa usa o código (`pataca`, `tortilla`, `isabel`...); `js/api.js` valida que cada elemento dos catálogos teña un `id` de tipo `string` antes de aceptalos (`listaValida`).
 
@@ -33,7 +33,7 @@ Extraídos directamente de `QCH.api` en `js/api.js`. Esta é a lista completa �
 | `GET /cociñeiros` | Si | `QCH.api.obterCociñeiros()`, `prepararCasa()` | Obxecto `{ "dia:xantar": persoaId }`. |
 | `PUT /cociñeiros` | Si | `QCH.api.gardarCociñeiros()`, `sincronizar('cociñeiros', …)` | Substitúe o recurso enteiro. |
 | `POST /compartir` | Si | `QCH.api.compartir(dia)`, acción `compartir-menu` en `js/app.js` | Petición `{ dia }`; resposta debe traer `{ url }` (o frontend rexeita a promesa se non). |
-| `GET /publico/<token>` | Non | `QCH.api.menuPublico(token)`, `js/publico.js` | Resposta debe traer polo menos `{ receita }`; o frontend le tamén `comensaisPrevistos` e `nutricion` se existen. |
+| `GET /publico?token=<token>` | Non | `QCH.api.menuPublico(token)`, `js/publico.js` | Resposta debe traer polo menos `{ receita }`; o frontend le tamén `comensaisPrevistos` e `nutricion` se existen. |
 | `POST /ia/axuda` | Si | `QCH.api.axudaIA(accion, receitaId, contexto)`, botón "Axuda da IA" en `js/vistas/detalle.js` | Petición `{ accion, receitaId, contexto }` (`contexto` inclúe polo menos `{ comensais }`); resposta `{ accion, modelo, proposta }`. `accion` é unha de `redactar`, `mellorar`, `nutricion`, `adaptar`, `sobras`, `lista_compra`, `recomendar` — o frontend hoxe só ofrece `mellorar`, `nutricion` e `adaptar` dende a ficha de receita. `proposta` non ten forma fixa: o frontend píntaa xenericamente (texto, listas ou pares clave/valor, todo escapado) sen asumir esquema. |
 
 **Non implementado no frontend**: non hai `POST /auth/logout` (pechar sesión é só local: borra o token en `localStorage`). Das accións de IA definidas no contrato, o frontend só chama a `mellorar`, `nutricion` e `adaptar`; `redactar`, `sobras`, `lista_compra` e `recomendar` non teñen UI aínda.
@@ -67,8 +67,9 @@ Se `login()` obtén sesión pero `prepararCasa()` falla nese intre, `login()` no
 
 - O botón "Compartir" (engadido en `js/vistas/hoxe.js`) esixe sesión iniciada; se non, abre o modal de configuración.
 - Chama a `POST /compartir` co día actual e agarda `{ url }`. Se o navegador soporta `navigator.share`, ábrese o selector nativo; se non, ábrese `https://wa.me/?text=...` cunha mensaxe cun enlace.
-- `js/publico.js` detecta rutas `/m/<token>` (`QCH.eRutaPublica`), retira a cabeceira e a barra de navegación, e chama a `GET /publico/<token>` sen autenticación. Amosa receita, ingredientes e comensais previstos; se non hai `nutricion` no obxecto devolto, amosa "A información nutricional aínda non está dispoñible" en lugar de romper.
+- `js/publico.js` detecta rutas `/m/<token>` (`QCH.eRutaPublica`), retira a cabeceira e a barra de navegación, e chama a `GET /publico?token=<token>` sen autenticación. Amosa receita, ingredientes e comensais previstos; se non hai `nutricion` no obxecto devolto, amosa "A información nutricional aínda non está dispoñible" en lugar de romper.
 - Se a chamada falla ou a resposta non trae `receita`, amosa unha mensaxe xenérica ("Esta ligazón xa non está dispoñible") — nunca un erro técnico.
+- **Por que `?token=` e non `/publico/<token>`**: n8n só resolve as rutas de webhook con `:param` se a URL leva diante o `webhookId` do nodo — `findDynamicWebhook()` colle o primeiro segmento da ruta e búscao como `webhookId` (ver `BACKEND_N8N_STATUS.md`). Ese id é interno de n8n e cambia se alguén recrea o nodo, polo que non debe aparecer nunha URL nosa. **A ligazón que se comparte, `/m/<token>`, non cambia**: isto só afecta á chamada interna que fai `js/api.js`, e `QCH.api.menuPublico(token)` segue tendo exactamente a mesma sinatura para quen a usa.
 
 ---
 

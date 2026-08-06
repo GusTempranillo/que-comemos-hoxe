@@ -217,9 +217,15 @@ QCH.api = (function () {
     reintentarPendentes,
     prepararCasa,
 
-    /* Compartición — contrato §7. A lectura pública non leva sesión. */
+    /* Compartición — contrato §7. A lectura pública non leva sesión.
+       O token vai como query param e non como segmento da ruta (`/publico/<token>`)
+       porque n8n só resolve as rutas con `:param` se a URL leva diante o webhookId
+       do nodo: `findDynamicWebhook()` colle o primeiro segmento e búscao como
+       webhookId (n8n-io/n8n#7166, pechado como "not planned"). Ese id é interno de
+       n8n e cambia se alguén recrea o nodo, así que non debe acabar nunha URL nosa.
+       A ligazón que se comparte, `/m/<token>`, non cambia por isto. */
     compartir: dia => chamar('POST', '/compartir', { dia }),
-    menuPublico: token => chamar('GET', '/publico/' + encodeURIComponent(token), undefined, true),
+    menuPublico: token => chamar('GET', '/publico?token=' + encodeURIComponent(token), undefined, true),
 
     /* Axuda da IA — contrato §8. A IA nunca cambia unha receita por conta
        propia (COOKBOOK_MODEL.md §Papel da IA): isto só devolve unha
