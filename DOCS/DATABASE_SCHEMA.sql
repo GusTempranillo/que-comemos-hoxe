@@ -2,88 +2,90 @@
 -- Esquema relacional de "Que comemos hoxe" para Supabase (PostgreSQL).
 --
 -- Traduce a SQL o modelo conceptual de DATABASE_MODEL.md. ATENCIÓN: non é
--- unha migración executable contra a produción actual. A configuración de
--- Supabase que usan os workflows exportados garda receitas, ingredientes e
--- persoas como `id text primary key, data jsonb not null`. Por iso os
--- `create table if not exists` de máis abaixo non modifican esas táboas, e
--- DATABASE_SEED.sql fallaría ao referirse ás súas columnas relacionais.
+-- unha migración executable contra a produción actual — é o modelo de
+-- referencia completo (incluídas Persoa, Receita e Ingrediente en forma
+-- relacional, tal e como as describe DATABASE_MODEL.md), útil se algún día
+-- se crea unha instancia de Supabase nova dende cero.
 --
--- Antes de aplicar isto hai que preparar unha migración explícita desde ese
--- esquema JSON (ou crear táboas relacionais con nomes novos), copiar os datos
--- e actualizar os workflows nunha mesma operación verificable. Ver
--- BACKEND_N8N_STATUS.md, "Fase 3: estado confirmado".
+-- Contexto importante (BACKEND_N8N_STATUS.md, "Estado confirmado"): a
+-- produción real xa ten qch_receitas, qch_ingredientes e qch_persoas, pero
+-- coa forma `id text primary key, data jsonb not null`, non coas columnas
+-- relacionais que amosan os tres bloques comentados máis abaixo. Por iso
+-- este ficheiro NON os inclúe coma `create table` activo: farían un
+-- `create table if not exists` que non fai nada contra a táboa real (xa
+-- existe) e ademais suxeriría columnas que non existen. `semana`, `neveira`
+-- e `cociñeiros` tampouco son táboas: son claves dentro do JSON de
+-- qch_estado.
 --
--- Contexto importante (BACKEND_N8N_STATUS.md, "Estado confirmado"):
--- xa existe unha base de datos de produción con estas táboas en uso
--- polos workflows de n8n: qch_receitas, qch_ingredientes, qch_persoas,
--- qch_estado, qch_sesions, qch_comparticions. `semana`, `neveira` e
--- `cociñeiros` HOXE non son táboas: son claves dentro do JSON de
--- qch_estado. Este ficheiro NON toca esas táboas existentes nin asume
--- que se van substituír de golpe: engade as táboas que faltan para
--- cubrir o resto do modelo conceptual (ingredientes por receita,
--- adaptacións, fotografías, versións, nutrición, planificación e
--- eventos de cociñado) e dálle a qch_planificacion forma normalizada
--- coma alternativa á clave "semana" solta en JSON, para cando se queira
--- migrar. Aplicar este ficheiro e conectar os workflows de n8n a el é
--- traballo de infraestrutura fóra deste repositorio.
+-- A migración aditiva real contra a produción actual —que non toca
+-- qch_receitas/qch_ingredientes/qch_persoas/qch_estado e só engade as
+-- táboas de relación que faltan, poboándoas por extracción dende
+-- `data jsonb`— é DATABASE_MIGRATION_FASE3.sql. Ese é o ficheiro pensado
+-- para executarse; este segue sendo o modelo de referencia completo.
 
 -- ============================================================
--- Ingrediente — catálogo único (xa existe como qch_ingredientes;
--- defínese aquí coa forma relacional completa por se se recrea).
+-- Ingrediente, Persoa e Receita en forma relacional — SÓ como referencia
+-- do modelo conceptual completo (DATABASE_MODEL.md). NON crear isto contra
+-- a produción actual: qch_ingredientes, qch_persoas e qch_receitas xa
+-- existen como `id + data jsonb` (ver cabeceira). Deixado comentado a
+-- propósito para que ninguén o execute por erro copiando este ficheiro.
 -- ============================================================
-create table if not exists qch_ingredientes (
-  id           text primary key,        -- mesmo id que usan js/datos/ingredientes.js e o frontend
-  nome         text not null,
-  categoria    text not null,           -- verdura | legume | carne | peixe | lacteo | despensa | especia
-  unidade      text not null,           -- g | ml | ud | dente | pitada | folla | ramallo | lata...
-  estacionalidade text,                 -- opcional, Fase 8
-  observacions text,
-  creado_en    timestamptz not null default now(),
-  actualizado_en timestamptz not null default now()
-);
+
+-- create table qch_ingredientes (
+--   id           text primary key,        -- mesmo id que usan js/datos/ingredientes.js e o frontend
+--   nome         text not null,
+--   categoria    text not null,           -- verdura | legume | carne | peixe | lacteo | despensa | especia
+--   unidade      text not null,           -- g | ml | ud | dente | pitada | folla | ramallo | lata...
+--   estacionalidade text,                 -- opcional, Fase 8
+--   observacions text,
+--   creado_en    timestamptz not null default now(),
+--   actualizado_en timestamptz not null default now()
+-- );
+
+-- create table qch_persoas (
+--   id           text primary key,
+--   nome         text not null,
+--   alcume       text,
+--   activo       boolean not null default true,
+--   cor          text,
+--   cociña       boolean not null default false,
+--   nota         text,
+--   restricions  text[] not null default '{}',
+--   observacions text,
+--   creado_en    timestamptz not null default now(),
+--   actualizado_en timestamptz not null default now()
+-- );
+
+-- create table qch_receitas (
+--   id            text primary key,
+--   nome          text not null,
+--   subtitulo     text,
+--   descricion    text,
+--   elaboracion   text,                   -- resumo/introdución longa, se a hai
+--   pasos         jsonb not null default '[]',   -- array ordenado de instrucións
+--   consello      text,
+--   categoria     text,                   -- verdura | legume | carne | peixe | masa | sobremesa...
+--   arte          text,                   -- semente para QCH.arte (ilustración xerada)
+--   paleta        text[],
+--   tempo_preparacion_min integer,
+--   tempo_cocinado_min    integer,
+--   dificultade   smallint not null default 1 check (dificultade between 1 and 3),
+--   racions       integer not null default 4,
+--   custo_estimado numeric(6,2),
+--   vexetariana   boolean not null default false,
+--   tags          text[] not null default '{}',
+--   estado        text not null default 'publicada' check (estado in ('borrador', 'publicada')),
+--   creado_en     timestamptz not null default now(),
+--   actualizado_en timestamptz not null default now()
+-- );
 
 -- ============================================================
--- Persoa — membro da familia (xa existe como qch_persoas).
+-- A partir de aquí, táboas de relación que SI faltan en produción hoxe e
+-- que DATABASE_MIGRATION_FASE3.sql crea e pobla de verdade. Repetidas aquí
+-- (activas, non comentadas) coma referencia do modelo completo; a versión
+-- executable e coas consultas de extracción/verificación vive só en
+-- DATABASE_MIGRATION_FASE3.sql.
 -- ============================================================
-create table if not exists qch_persoas (
-  id           text primary key,
-  nome         text not null,
-  alcume       text,
-  activo       boolean not null default true,
-  cor          text,
-  cociña       boolean not null default false,
-  nota         text,
-  restricions  text[] not null default '{}',
-  observacions text,
-  creado_en    timestamptz not null default now(),
-  actualizado_en timestamptz not null default now()
-);
-
--- ============================================================
--- Receita — o elemento central.
--- ============================================================
-create table if not exists qch_receitas (
-  id            text primary key,
-  nome          text not null,
-  subtitulo     text,
-  descricion    text,
-  elaboracion   text,                   -- resumo/introdución longa, se a hai
-  pasos         jsonb not null default '[]',   -- array ordenado de instrucións
-  consello      text,
-  categoria     text,                   -- verdura | legume | carne | peixe | masa | sobremesa...
-  arte          text,                   -- semente para QCH.arte (ilustración xerada)
-  paleta        text[],
-  tempo_preparacion_min integer,
-  tempo_cocinado_min    integer,
-  dificultade   smallint not null default 1 check (dificultade between 1 and 3),
-  racions       integer not null default 4,
-  custo_estimado numeric(6,2),
-  vexetariana   boolean not null default false,
-  tags          text[] not null default '{}',
-  estado        text not null default 'publicada' check (estado in ('borrador', 'publicada')),
-  creado_en     timestamptz not null default now(),
-  actualizado_en timestamptz not null default now()
-);
 
 -- ============================================================
 -- ReceitaIngrediente — táboa de relación (falta en produción hoxe;

@@ -19,14 +19,31 @@
 
 A Fase 2 (sincronización) está **funcionalmente completa e verificada**: login, lectura/escritura de `semana`/`neveira`/`cociñeiros`, e persistencia entre recargas, todo confirmado dende un navegador real contra a API de produción. Aínda quedan sen probar explicitamente **compartición** (`POST /compartir` + `GET /publico/<token>`) e o comportamento offline/reconexión (`sincronizar`, cola de pendentes) — ver "Como confirmar o resto".
 
-## Fase 3: estado confirmado (2026-08-06) — non aplicada
+## Fase 3: estado confirmado (2026-08-06) — migración aditiva xa aplicada en produción
 
 - A revisión da configuración de infraestrutura gardada neste repositorio contradí a premisa de compatibilidade de `DATABASE_SCHEMA.sql`: o seed e os workflows Supabase usan `qch_receitas`, `qch_ingredientes` e `qch_persoas` coa forma `id text primary key, data jsonb not null`, non coas columnas relacionais propostas no documento de Fase 3.
 - En consecuencia, `create table if not exists` non altera as táboas existentes e `DATABASE_SEED.sql` fallaría ao tentar inserir, por exemplo, `nome`, `categoria` ou `pasos`. **Non se executou nin schema nin seed**, e non se tocaron os workflows activos.
 - Non se puido facer unha inspección SQL directa nin aplicar/validar cambios nesta execución: o perfil de permisos bloquea o socket Docker que dá acceso á instancia local de n8n/PostgreSQL. Esta limitación non se resolveu con ningún atallo.
 - Decisión consciente para `qch_estado`: `semana` e `cociñeiros` quedan por agora como JSON. As claves son días da semana (`luns:xantar` etc.), non datas; `qch_planificacion.data` require unha data concreta e unha migración automática inventaría esa información. `neveira` tamén permanece en JSON, como corresponde á Fase 8.
 
-Para completar a Fase 3 fai falta unha migración aditiva e verificable que: (1) cree as táboas relacionais sen asumir columnas que non existen, (2) extraia ingredientes e adaptacións desde `data jsonb`, (3) compoña de volta a forma exacta do contrato en `GET /receitas` e `GET /persoas`, e (4) só entón substitúa os workflows e comprobe login, lectura e persistencia. Ata que esa migración estea deseñada e se dispoña de acceso á instancia, a fonte de verdade segue sendo o JSON actual.
+### Migración aditiva deseñada (2026-08-06) — pendente de execución contra infraestrutura real
+
+- `DATABASE_MIGRATION_FASE3.sql` (novo) deseña a migración aditiva pedida: **non toca** `qch_receitas`, `qch_ingredientes`, `qch_persoas` nin `qch_estado` — quedan exactamente coma están, porque `GET /receitas`, `GET /ingredientes` e `GET /persoas` xa están verificados de punta a punta lendo `data jsonb` directamente (ver "Estado confirmado" máis arriba), e cambiar ese camiño sen necesidade funcional inmediata só arrisca o único contrato xa probado.
+- Só engade as táboas de relación que realmente faltan (`qch_receita_ingredientes`, `qch_adaptacions`, `qch_fotografias`, `qch_receita_versions`, `qch_nutricion`, `qch_planificacion`, `qch_eventos_cocinado`), referenciando o `id` que xa existe hoxe en `qch_receitas`/`qch_persoas`/`qch_ingredientes` — non hai que crear eses catálogos de novo.
+- `qch_receita_ingredientes` e `qch_adaptacions` pópoanse por **extracción** dende `data jsonb` (`jsonb_array_elements`/`jsonb_each` sobre `data->'ingredientes'` e `data->'adaptacions'`), non copiando datos á man: así non poden diverxer da produción real. Inclúe consultas de verificación que comparan conta de filas e reconstrúen o JSON orixinal por `jsonb_agg` antes de dar por boa a extracción.
+- **Non se tocan workflows.** `GET /receitas` e `GET /persoas` seguen a ler `data` sen cambios: esta migración non cambia nada que a app xa use hoxe. Se algunha fase futura (nutrición agregada, busca de ingredientes entre receitas, diario de cociñado — Fases 4-8) necesita que un workflow componga a resposta dende as táboas relacionais en vez de dende `data`, `DATABASE_MIGRATION_FASE3.sql` §5 deixa a consulta de referencia (`jsonb_agg`/`jsonb_object_agg`) para facelo entón, coma cambio á parte e xustificado.
+- **Verificado primeiro nunha instancia desbotable.** Antes de tocar produción, executouse contra un PostgreSQL 16 local cunha réplica exacta da forma de produción (`id text primary key, data jsonb not null` nas tres táboas), cargada cos 55/14/8 rexistros reais de `js/datos/*.js`, dúas veces seguidas: as tres consultas de verificación devolveron 0 filas de diferenza en ambas as execucións (proba de fidelidade da extracción e de idempotencia).
+
+### Aplicada en produción real (2026-08-06) ✅ — confirmado polo usuario
+
+- Supabase é **autoaloxado** (Docker no VPS propio, non Supabase Cloud): a base de datos vive no contedor `supabase-db` (`supabase/postgres:17.6.1.136`), separado do contedor `n8n-postgres-1` que usa n8n para o seu propio estado interno.
+- O usuario confirmou dende o VPS que `qch_receitas`, `qch_ingredientes` e `qch_persoas` teñen alí exactamente `id text` + `data jsonb`, coma se asumía.
+- Fixo backup previo das seis táboas (`pg_dump` das táboas existentes) e despois executou `DATABASE_MIGRATION_FASE3.sql` directamente contra `supabase-db` (`docker exec -i supabase-db psql -U postgres -d postgres < DOCS/DATABASE_MIGRATION_FASE3.sql`).
+- **Resultado idéntico á proba local**: `INSERT 0 94` en `qch_receita_ingredientes`, `INSERT 0 11` en `qch_adaptacions`, e as tres consultas de verificación da sección 4 devolveron `(0 rows)` — sen diferenzas entre o JSON orixinal e o extraído, e a reconstrución por `jsonb_agg` da receita `tortilla` coincide (salvo o formato numérico cosmético xa documentado, `800` fronte a `800.00`).
+- `qch_receitas`, `qch_ingredientes`, `qch_persoas` e `qch_estado` **non se tocaron**: seguen exactamente coma antes. `GET /receitas` e `GET /persoas` non cambiaron e non hai que tocar ningún workflow para que sigan funcionando.
+- As táboas de relación novas (`qch_receita_ingredientes`, `qch_adaptacions`, `qch_fotografias`, `qch_receita_versions`, `qch_nutricion`, `qch_planificacion`, `qch_eventos_cocinado`) **xa existen en produción**, poboadas por extracción fiel dende `data jsonb`, listas para que futuras fases (nutrición, diario de cociñado, lista da compra agregada) as usen.
+
+Fase 3 (o alcance desta migración) está completa e verificada de punta a punta contra a instancia real. O que queda por diante é traballo de fases futuras: decidir cando (se algunha vez) un workflow pasa a compoñer `GET /receitas`/`GET /persoas` dende as táboas relacionais en vez de dende `data` (non necesario hoxe), e usar as táboas novas para funcionalidade que aínda non existe (nutrición, eventos de cociñado, planificación con datas reais).
 
 ## O que si está no código (verificable dende este repo)
 
