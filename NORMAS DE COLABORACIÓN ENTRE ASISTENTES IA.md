@@ -31,15 +31,26 @@ Só se pode comezar a traballar cando o repositorio estea sincronizado con GitHu
 
 Se aparecen cambios locais, commits sen publicar ou conflitos, o asistente debe deter o traballo e explicalo antes de continuar.
 
+Se a tarefa foi asignada explicitamente a unha rama de traballo xa existente (por exemplo, unha rama de feature indicada nas instrucións da tarefa), a sincronización faise contra esa rama en vez de `main`:
+
+```bash
+git fetch origin
+git checkout <rama-de-traballo>
+git pull origin <rama-de-traballo>
+git status
+```
+
+`main` segue a ser a referencia para saber que hai xa publicado e mesturado; a rama de traballo é onde se desenvolve ata que se abra ou actualice o seu pull request.
+
 ---
 
 # 3. Estado limpo
 
-O estado correcto para comezar unha tarefa é:
+O estado correcto para comezar unha tarefa é ter o directorio de traballo limpo e a rama correspondente (`main`, ou a rama de traballo asignada segundo o §2) sincronizada co seu remoto:
 
 ```text
-On branch main
-Your branch is up to date with 'origin/main'.
+On branch <main-ou-rama-de-traballo>
+Your branch is up to date with 'origin/<mesma-rama>'.
 
 nothing to commit, working tree clean
 ```
