@@ -66,11 +66,20 @@ Se `login()` obtén sesión pero `prepararCasa()` falla nese intre, `login()` no
 # 5. Compartición: ligazón pública (retirada da interface) e imaxe JPG (`js/compartirImaxe.js`)
 
 - **Ligazón pública**: había un botón "Compartir" en `js/vistas/hoxe.js` que chamaba a `POST /compartir` e agardaba `{ url }`. Quitouse porque a URL que devolvía non funcionaba de forma fiable en produción (nin sequera se puido confirmar se o fallo está en `POST /compartir`, en `GET /publico/<token>`, ou nos dous — non verificable dende este repositorio). `js/publico.js` (a páxina que le `/m/<token>`) e `GET /publico/<token>` en `js/api.js` mantéñense por se hai ligazóns xa creadas antes por outra vía, pero non hai xa ningún camiño na interface para crear unha ligazón nova.
-- **Imaxe JPG** (o que a substitúe): botón "Imaxe" en `js/vistas/hoxe.js`, lóxica en `js/compartirImaxe.js` (`QCH.imaxeMenu`). Non chama a ningún endpoint: debuxa nun `<canvas>` local a foto real do prato (`receita.foto`, cargada con `crossOrigin` e descartada silenciosamente se contamina o lenzo — CORS) ou, se non hai foto ou non carga, a ilustración xerativa (`QCH.arte`). Inclúe nome, subtítulo, tempo/dificultade, comensais, cociñeiro e nutrición — esta última só se `receita.nutricion` existe, cousa que hoxe **nunca** pasa (ver §6: a proposta da IA nunca se garda na receita). Ofrece descarga directa e, se o navegador soporta Web Share API con ficheiros, compartir nativo coma foto.
+- **Imaxe JPG** (o que a substitúe): botón "Imaxe" en `js/vistas/hoxe.js`, lóxica en `js/compartirImaxe.js` (`QCH.imaxeMenu`). Non chama a ningún endpoint: é un cartel só de texto e emoticonos decorativos debuxado nun `<canvas>` local (sen foto nin ilustración — deseño deliberado, ver máis abaixo). Inclúe nome, subtítulo, tempo/dificultade/vexetariana, as variacións por comensal (`QCH.adaptacionsDe`), comensais, cociñeiro e nutrición (`QCH.nutricionReceita`, ver §7). A altura do lenzo calcúlase nunha primeira pasada de só medida antes de pintar, para axustarse ao contido real. Ofrece descarga directa e, se o navegador soporta Web Share API con ficheiros, compartir nativo coma foto.
 
 ---
 
-# 6. Preguntas abertas (sen resolver dende o código)
+# 7. Nutrición: calculada en local, non pola IA (`QCH.nutricionReceita` en `js/utilidades.js`)
+
+- Cada ingrediente en `QCH.INGREDIENTES` (`js/datos/ingredientes.js`) leva valores nutricionais estándar por 100 g/ml (`kcal100`, `prot100`, `carb100`, `grax100`, `fibra100`) e, cando a súa unidade non é xa `g` nin `ml` (ex. "1 ud" de cebola), un peso medio (`gramosUd`) para poder convertelo a gramos.
+- `QCH.nutricionReceita(receita)` suma a achega de cada ingrediente da receita (xa escalada a gramos) e divide entre `receita.racions` para dar un valor "por ración". Non depende de `POST /ia/axuda` nin de n8n — funciona sen conexión e para calquera receita con ingredientes coñecidos.
+- Isto substitúe a acción `nutricion` de `POST /ia/axuda` (contrato §2): xa non está en `OPCIONS_IA` (`js/vistas/detalle.js`) — a ficha da receita amosa a nutrición sempre, sen pedila. O contrato de `POST /ia/axuda` segue definindo `nutricion` coma acción válida por se algún día fai falta recalculala doutro xeito, pero o frontend hoxe só chama a `mellorar` e `adaptar`.
+- **Limitación coñecida e deliberadamente non corrixida**: é unha suma simple de ingredientes, non un cálculo real de consumo. En pratos fritos (ex. "Croquetas de cocido") sobreestima moito as calorías e as graxas, porque conta todo o aceite que leva a receita coma se se comese enteiro, cando en realidade só se absorbe unha parte pequena ao fritir. A ficha da receita e a imaxe do menú avisan diso ("Estimación aproximada…") en vez de fixar un factor de corrección inventado.
+
+---
+
+# 8. Preguntas abertas (sen resolver dende o código)
 
 - Comportamento exacto ante un `409` de conflito: hoxe trátase igual que calquera outro erro (queda pendente).
 

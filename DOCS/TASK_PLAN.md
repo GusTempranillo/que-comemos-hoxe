@@ -67,7 +67,7 @@ Principio guía (`ARCHITECTURE.md`): o frontend nunca fala directamente coa base
 
 - [x] `QCH.estado.subscribe()` en `js/app.js` chama a `QCH.api.sincronizar()` despois de pintar, nunca antes — a rede non bloquea a interface.
 - [x] Cola de pendentes en `localStorage` (`qch:api:pendentes:v1`); reintento automático en `online` e en cada sincronización nova.
-- [x] Sen fusión de conflitos: un `409` ou calquera outro erro trátase coma un fallo de rede normal (queda pendente). Isto é unha decisión simple, non un caso sen cubrir — documentado como tal en `API_CONTRACT.md` §6.
+- [x] Sen fusión de conflitos: un `409` ou calquera outro erro trátase coma un fallo de rede normal (queda pendente). Isto é unha decisión simple, non un caso sen cubrir — documentado como tal en `API_CONTRACT.md` §8.
 
 ## 2.6 · Axustar o Service Worker 🟡
 

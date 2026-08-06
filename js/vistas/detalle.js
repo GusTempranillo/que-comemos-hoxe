@@ -123,6 +123,21 @@ QCH.abrirReceita = function (id) {
     '</div>';
   }
 
+  const nut = QCH.nutricionReceita(r);
+  const bloqueNutricion = nut
+    ? '<div class="rounded-2xl bg-papel dark:bg-carbon border border-tinta/8 dark:border-white/10 p-4 sm:p-5">' +
+        '<h3 class="font-display text-lg text-tinta dark:text-crema mb-1">Nutrición</h3>' +
+        '<p class="text-xs text-tinta/45 dark:text-crema/45 mb-3">Por ración, calculado a partir dos ingredientes. Estimación aproximada: en pratos fritos pode saír por riba do real, porque conta todo o aceite da tixola coma se se comese enteiro.</p>' +
+        '<div class="grid grid-cols-3 sm:grid-cols-5 gap-2.5">' + [
+          [nut.calorias, 'kcal'], [nut.proteinas, 'g prot.'], [nut.hidratos, 'g hidr.'], [nut.graxas, 'g graxas'], [nut.fibra, 'g fibra']
+        ].map(c =>
+          '<div class="rounded-xl bg-crema dark:bg-fondo px-2 py-3 text-center">' +
+            '<p class="text-lg font-semibold text-tinta dark:text-crema">' + QCH.esc(c[0]) + '</p>' +
+            '<p class="text-[11px] text-tinta/50 dark:text-crema/50">' + c[1] + '</p>' +
+          '</div>').join('') +
+        '</div></div>'
+    : '';
+
   const bloqueAdap = adap.length
     ? '<div class="rounded-2xl bg-papel dark:bg-carbon border border-tinta/8 dark:border-white/10 p-4">' +
         '<div class="flex items-center gap-2 mb-1">' +
@@ -170,6 +185,8 @@ QCH.abrirReceita = function (id) {
         // As adaptacións van ARRIBA, antes dos ingredientes: é o que esta app
         // sabe e as demais non, e nun móbil o que queda abaixo non se le.
         bloqueAdap +
+
+        bloqueNutricion +
 
         '<div class="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-6">' +
           '<div>' +
@@ -268,9 +285,12 @@ QCH.abrirRexistroCociñado = function (receitaId) {
    fóra desta pantalla (COOKBOOK_MODEL.md §Papel da IA). */
 QCH.axudaIA = null;
 
+/* "Calcular nutrición" non está aquí: quitouse a favor de
+   QCH.nutricionReceita(), que a calcula en local a partir dos
+   ingredientes (ver bloqueNutricion máis abaixo) sen depender da IA
+   nin de n8n. */
 const OPCIONS_IA = [
   { accion: 'mellorar', icona: 'editar', titulo: 'Mellorar a receita', descricion: 'Redacción e pasos máis claros.' },
-  { accion: 'nutricion', icona: 'info', titulo: 'Calcular nutrición', descricion: 'Calorías, proteínas, hidratos, graxas e fibra por ración.' },
   { accion: 'adaptar', icona: 'familia', titulo: 'Adaptar á familia', descricion: 'Suxestións segundo os comensais de hoxe.' }
 ];
 

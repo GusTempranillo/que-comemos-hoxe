@@ -19,6 +19,39 @@ QCH.fmtCant = (n) => {
   return (r % 1 === 0 ? r.toFixed(0) : r.toFixed(1)).replace('.', ',');
 };
 
+/* Nutrición por ración, calculada en local a partir dos valores estándar
+   por 100 g/ml de cada ingrediente (QCH.INGREDIENTES) e das cantidades da
+   propia receita — sen IA nin chamada ningunha. As cantidades da receita
+   xa son sempre para `receita.racions` (normalmente 4), así que non hai
+   que escalalas polos comensais de hoxe: isto é nutrición "por ración",
+   igual para todos. Devolve null se non hai datos abondo para calculala. */
+QCH.nutricionReceita = function (receita) {
+  if (!receita || !Array.isArray(receita.ingredientes) || !receita.ingredientes.length) return null;
+  const totais = { calorias: 0, proteinas: 0, hidratos: 0, graxas: 0, fibra: 0 };
+  let algún = false;
+  receita.ingredientes.forEach(ing => {
+    const datos = QCH.mapaIngredientes[ing.id];
+    if (!datos || datos.kcal100 == null) return;
+    algún = true;
+    const enGramos = (datos.unid === 'g' || datos.unid === 'ml') ? ing.cant : ing.cant * (datos.gramosUd || 0);
+    const factor = enGramos / 100;
+    totais.calorias  += datos.kcal100  * factor;
+    totais.proteinas += datos.prot100  * factor;
+    totais.hidratos  += datos.carb100  * factor;
+    totais.graxas    += datos.grax100  * factor;
+    totais.fibra     += datos.fibra100 * factor;
+  });
+  if (!algún) return null;
+  const racions = receita.racions || 4;
+  return {
+    calorias:  Math.round(totais.calorias  / racions),
+    proteinas: Math.round(totais.proteinas / racions),
+    hidratos:  Math.round(totais.hidratos  / racions),
+    graxas:    Math.round(totais.graxas    / racions),
+    fibra:     Math.round(totais.fibra     / racions)
+  };
+};
+
 QCH.NIVEL_DIF = { 1: 'Doado', 2: 'Medio', 3: 'Require man' };
 
 /* Canto sube ou baixa a neveira por toque, e con canto se engade algo novo.

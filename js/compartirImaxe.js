@@ -173,7 +173,7 @@ QCH.imaxeMenu = (function () {
     if (pintar) { ctx.fillStyle = '#191410'; ctx.fillText('🥗  Nutrición', MARXE, y); }
     y += 44;
 
-    const nut = receita.nutricion;
+    const nut = QCH.nutricionReceita(receita);
     if (nut) {
       const campos = [
         [nut.calorias, 'kcal'], [nut.proteinas, 'g prot.'], [nut.hidratos, 'g hidr.'], [nut.graxas, 'g graxas'], [nut.fibra, 'g fibra']
@@ -194,7 +194,12 @@ QCH.imaxeMenu = (function () {
         if (pintar) { ctx.fillStyle = '#19141066'; ctx.fillText(c[1], cx + anchoCaixa / 2, y + 72); }
         ctx.textAlign = 'left';
       });
-      y += 96;
+      y += 96 + 30;
+      ctx.font = '400 18px Inter, sans-serif';
+      partirLiñas(ctx, 'Estimación por ración, calculada a partir dos ingredientes.', anchoTexto).forEach(l => {
+        if (pintar) { ctx.fillStyle = '#19141055'; ctx.fillText(l, MARXE, y); }
+        y += 24;
+      });
     } else {
       ctx.font = '400 24px Inter, sans-serif';
       if (pintar) { ctx.fillStyle = '#19141066'; ctx.fillText('Información nutricional aínda non dispoñible.', MARXE, y - 4); }
