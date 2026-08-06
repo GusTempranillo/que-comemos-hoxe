@@ -105,6 +105,7 @@ QCH.vistas.hoxe = (function () {
             '<span class="text-sm text-tinta/40 dark:text-crema/40">Para ' + n + (n === 1 ? ' comensal' : ' comensais') + '</span>' +
             QCH.btn('Axustar quen come', 'ir-familia', { variante: 'fantasma', pequeno: true, icona: 'familia' }) +
             QCH.btn('Compartir', 'compartir-menu', { variante: 'fantasma', pequeno: true, datos: ' data-dia="' + dia.id + '"' }) +
+            QCH.btn('Imaxe', 'imaxe-menu', { variante: 'fantasma', pequeno: true, icona: 'imaxe', datos: ' data-dia="' + dia.id + '"' }) +
           '</div>' +
         '</header>' +
         // Un só xantar: unha tarxeta, non unha grella de dúas.
