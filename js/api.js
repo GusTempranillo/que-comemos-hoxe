@@ -217,8 +217,11 @@ QCH.api = (function () {
     reintentarPendentes,
     prepararCasa,
 
-    /* Compartición — contrato §7. A lectura pública non leva sesión. */
-    compartir: dia => chamar('POST', '/compartir', { dia }),
+    /* Lectura pública dun menú compartido — contrato §7. Non leva sesión.
+       O botón que creaba ligazóns novas (`POST /compartir`) quitouse da
+       interface: a ligazón que devolvía non funcionaba de forma fiable en
+       produción. Isto mantense porque `js/publico.js` (a páxina `/m/<token>`)
+       aínda pode ler ligazóns xa existentes. */
     menuPublico: token => chamar('GET', '/publico/' + encodeURIComponent(token), undefined, true),
 
     /* Axuda da IA — contrato §8. A IA nunca cambia unha receita por conta
