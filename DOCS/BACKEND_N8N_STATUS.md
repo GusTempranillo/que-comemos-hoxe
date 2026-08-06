@@ -19,6 +19,15 @@
 
 A Fase 2 (sincronización) está **funcionalmente completa e verificada**: login, lectura/escritura de `semana`/`neveira`/`cociñeiros`, e persistencia entre recargas, todo confirmado dende un navegador real contra a API de produción. Aínda quedan sen probar explicitamente **compartición** (`POST /compartir` + `GET /publico/<token>`) e o comportamento offline/reconexión (`sincronizar`, cola de pendentes) — ver "Como confirmar o resto".
 
+## Fase 3: estado confirmado (2026-08-06) — non aplicada
+
+- A revisión da configuración de infraestrutura gardada neste repositorio contradí a premisa de compatibilidade de `DATABASE_SCHEMA.sql`: o seed e os workflows Supabase usan `qch_receitas`, `qch_ingredientes` e `qch_persoas` coa forma `id text primary key, data jsonb not null`, non coas columnas relacionais propostas no documento de Fase 3.
+- En consecuencia, `create table if not exists` non altera as táboas existentes e `DATABASE_SEED.sql` fallaría ao tentar inserir, por exemplo, `nome`, `categoria` ou `pasos`. **Non se executou nin schema nin seed**, e non se tocaron os workflows activos.
+- Non se puido facer unha inspección SQL directa nin aplicar/validar cambios nesta execución: o perfil de permisos bloquea o socket Docker que dá acceso á instancia local de n8n/PostgreSQL. Esta limitación non se resolveu con ningún atallo.
+- Decisión consciente para `qch_estado`: `semana` e `cociñeiros` quedan por agora como JSON. As claves son días da semana (`luns:xantar` etc.), non datas; `qch_planificacion.data` require unha data concreta e unha migración automática inventaría esa información. `neveira` tamén permanece en JSON, como corresponde á Fase 8.
+
+Para completar a Fase 3 fai falta unha migración aditiva e verificable que: (1) cree as táboas relacionais sen asumir columnas que non existen, (2) extraia ingredientes e adaptacións desde `data jsonb`, (3) compoña de volta a forma exacta do contrato en `GET /receitas` e `GET /persoas`, e (4) só entón substitúa os workflows e comprobe login, lectura e persistencia. Ata que esa migración estea deseñada e se dispoña de acceso á instancia, a fonte de verdade segue sendo o JSON actual.
+
 ## O que si está no código (verificable dende este repo)
 
 - `js/api.js` implementa un cliente HTTP completo cara a unha API con forma n8n: login por código de casa, catálogos de só lectura, estado planificable (`semana`/`neveira`/`cociñeiros`) con `PUT` completo, compartición e lectura pública. O contrato exacto que asume está en `API_CONTRACT.md`.

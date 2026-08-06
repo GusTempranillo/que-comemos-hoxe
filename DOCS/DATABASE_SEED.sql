@@ -5,9 +5,12 @@
 -- hoxe arrancan a app sen conexión/sen sesión — esta carga fai que a
 -- base de datos parta do mesmo punto.
 --
--- Non se executou contra ningunha instancia real de Supabase dende
--- este repo (ver nota en DATABASE_SCHEMA.sql). Pénsase para executarse
--- despois dese ficheiro.
+-- Non executar directamente na produción actual. Alí qch_receitas,
+-- qch_ingredientes e qch_persoas teñen a forma `id, data jsonb`; o schema
+-- proposto non os transforma por usar `create table if not exists`. Este seed
+-- só pode executarse despois dunha migración explícita que cree ou transforme
+-- esas columnas relacionais. Ver DATABASE_SCHEMA.sql e
+-- BACKEND_N8N_STATUS.md, "Fase 3: estado confirmado".
 
 -- ============================================================
 -- Ingredientes (QCH.INGREDIENTES)

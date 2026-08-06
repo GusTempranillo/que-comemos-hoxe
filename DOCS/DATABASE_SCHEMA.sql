@@ -1,11 +1,17 @@
 -- DATABASE_SCHEMA.sql
 -- Esquema relacional de "Que comemos hoxe" para Supabase (PostgreSQL).
 --
--- Traduce a SQL o modelo conceptual de DATABASE_MODEL.md. Non se aplicou
--- contra ningunha instancia real de Supabase dende este repo (ver
--- BACKEND_N8N_STATUS.md: este repo non ten acceso a infraestrutura fóra
--- del) — é a proposta lista para revisar e executar por quen administra
--- Supabase/n8n (Codex).
+-- Traduce a SQL o modelo conceptual de DATABASE_MODEL.md. ATENCIÓN: non é
+-- unha migración executable contra a produción actual. A configuración de
+-- Supabase que usan os workflows exportados garda receitas, ingredientes e
+-- persoas como `id text primary key, data jsonb not null`. Por iso os
+-- `create table if not exists` de máis abaixo non modifican esas táboas, e
+-- DATABASE_SEED.sql fallaría ao referirse ás súas columnas relacionais.
+--
+-- Antes de aplicar isto hai que preparar unha migración explícita desde ese
+-- esquema JSON (ou crear táboas relacionais con nomes novos), copiar os datos
+-- e actualizar os workflows nunha mesma operación verificable. Ver
+-- BACKEND_N8N_STATUS.md, "Fase 3: estado confirmado".
 --
 -- Contexto importante (BACKEND_N8N_STATUS.md, "Estado confirmado"):
 -- xa existe unha base de datos de produción con estas táboas en uso
