@@ -94,6 +94,7 @@ QCH.abrirModoCociñar = function (receitaId) {
   function rematar() {
     QCH.modal.pechar();
     QCH.toast('Bo proveito!');
+    QCH.abrirRexistroCociñado(r.id);
   }
 
   /* ---------- Debuxo ---------- */

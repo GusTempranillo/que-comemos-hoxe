@@ -149,6 +149,21 @@ window.QCH = window.QCH || {};
     'pechar-modal': () => QCH.modal.pechar(),
 
     'abrir-modo-cociñar': (el) => QCH.abrirModoCociñar(el.getAttribute('data-id')),
+    'abrir-rexistro-cociñado': (el) => QCH.abrirRexistroCociñado(el.getAttribute('data-id')),
+    'gardar-rexistro-cociñado': (el) => {
+      const id = el.getAttribute('data-id');
+      const responsableId = QCH.$('#reg-responsable', el).value;
+      if (!responsableId) { QCH.toast('Falta quen cociñou', 'aviso'); return; }
+      QCH.rexistrarCociñado(id, {
+        data: QCH.$('#reg-data', el).value || new Date().toISOString().slice(0, 10),
+        responsableId,
+        valoracion: parseInt(QCH.$('#reg-valoracion', el).value, 10),
+        comentario: QCH.$('#reg-comentario', el).value.trim(),
+        cambios: QCH.$('#reg-cambios', el).value.trim()
+      });
+      QCH.modal.pechar();
+      QCH.toast('Rexistrado no diario');
+    },
     'cociñar-anterior': () => QCH.cociñar && QCH.cociñar.anterior(),
     'cociñar-seguinte': () => QCH.cociñar && QCH.cociñar.seguinte(),
     'cociñar-ir': (el) => QCH.cociñar && QCH.cociñar.ir(parseInt(el.getAttribute('data-paso'), 10)),
@@ -239,6 +254,10 @@ window.QCH = window.QCH || {};
       QCH.estado.update(s => { s.neveira[id] = inicial; }, 'neveira');
       QCH.toast(ing.nome + ' na neveira');
     },
+
+    'abrir-axuda-ia': (el) => QCH.abrirAxudaIA(el.getAttribute('data-id')),
+    'ia-pedir': (el) => QCH.axudaIA && QCH.axudaIA.pedir(el.getAttribute('data-ia-accion')),
+    'ia-volver': () => QCH.axudaIA && QCH.axudaIA.volver(),
 
     'abrir-configuracion': () => QCH.abrirConfiguracion(),
 

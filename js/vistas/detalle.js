@@ -81,6 +81,48 @@ QCH.abrirReceita = function (id) {
       '<p class="text-sm text-tinta/75 dark:text-crema/75 leading-relaxed pt-1">' + QCH.esc(p) + '</p>' +
     '</li>').join('');
 
+  const bloqueHistoria = r.historia
+    ? '<div class="rounded-2xl bg-mel/8 dark:bg-mel/15 border border-mel/20 p-4">' +
+        '<p class="text-[11px] font-bold uppercase tracking-[.12em] text-[#8A5A10] dark:text-[#F0C57A] mb-1">Historia</p>' +
+        '<p class="text-sm text-tinta/70 dark:text-crema/70 leading-relaxed italic">' + QCH.esc(r.historia) + '</p>' +
+      '</div>'
+    : '';
+
+  function bloqueDiario() {
+    const eventos = QCH.eventosDe(r.id);
+    const diasDende = QCH.diasDendeUltimoCociñado(r.id);
+
+    const lista = eventos.length
+      ? '<ul class="divide-y divide-tinta/6 dark:divide-white/8">' + eventos.map(ev => {
+          const p = QCH.persoa(ev.responsableId);
+          return '<li class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">' +
+            (p ? QCH.avatar(p, 30) : '') +
+            '<div class="min-w-0 grow">' +
+              '<div class="flex items-baseline justify-between gap-2">' +
+                '<p class="text-sm font-semibold text-tinta dark:text-crema truncate">' + QCH.esc(p ? p.nome : 'Alguén') + '</p>' +
+                '<span class="shrink-0 text-xs tabular-nums text-tinta/45 dark:text-crema/45">' + QCH.esc(ev.data) + '</span>' +
+              '</div>' +
+              '<p class="text-mel dark:text-[#F0C57A] text-sm leading-none mt-0.5" aria-label="' + ev.valoracion + ' de 5 estrelas">' + QCH.estrelas(ev.valoracion) + '</p>' +
+              (ev.comentario ? '<p class="text-sm text-tinta/70 dark:text-crema/70 mt-1">' + QCH.esc(ev.comentario) + '</p>' : '') +
+              (ev.cambios ? '<p class="text-xs text-tinta/45 dark:text-crema/45 mt-1">Cambios: ' + QCH.esc(ev.cambios) + '</p>' : '') +
+            '</div></li>';
+        }).join('') + '</ul>'
+      : '<p class="text-sm text-tinta/50 dark:text-crema/50">Aínda non hai rexistros. Cando a cociñes, garda como saíu.</p>';
+
+    return '<div class="rounded-2xl bg-papel dark:bg-carbon border border-tinta/8 dark:border-white/10 p-4 sm:p-5">' +
+      '<div class="flex items-center justify-between gap-3 mb-1">' +
+        '<h3 class="font-display text-lg text-tinta dark:text-crema">Diario de cociñado</h3>' +
+        QCH.btn('Rexistrar', 'abrir-rexistro-cociñado', { variante: 'secundario', pequeno: true, icona: 'mais', datos: ' data-id="' + r.id + '"' }) +
+      '</div>' +
+      (diasDende != null
+        ? '<p class="text-xs text-tinta/45 dark:text-crema/45 mb-3">' +
+            (diasDende === 0 ? 'Cociñado hoxe' : 'Hai ' + diasDende + (diasDende === 1 ? ' día' : ' días') + ' que non se cociña') +
+          '</p>'
+        : '<p class="text-xs text-tinta/45 dark:text-crema/45 mb-3">Aínda non rexistrado</p>') +
+      lista +
+    '</div>';
+  }
+
   const bloqueAdap = adap.length
     ? '<div class="rounded-2xl bg-papel dark:bg-carbon border border-tinta/8 dark:border-white/10 p-4">' +
         '<div class="flex items-center gap-2 mb-1">' +
@@ -117,10 +159,13 @@ QCH.abrirReceita = function (id) {
         '<div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">' +
           QCH.metaReceita(r) +
           '<div class="flex flex-col sm:flex-row gap-2 [&>button]:w-full sm:[&>button]:w-auto">' +
+            QCH.btn('Axuda da IA', 'abrir-axuda-ia', { variante: 'fantasma', icona: 'xerar', datos: ' data-id="' + r.id + '"' }) +
             QCH.btn('Modo cociñar', 'abrir-modo-cociñar', { variante: 'secundario', icona: 'lume', datos: ' data-id="' + r.id + '"' }) +
             QCH.btn('Poñer na semana', 'poñer-na-semana', { variante: 'primario', icona: 'semana', datos: ' data-id="' + r.id + '"' }) +
           '</div>' +
         '</div>' +
+
+        bloqueHistoria +
 
         // As adaptacións van ARRIBA, antes dos ingredientes: é o que esta app
         // sabe e as demais non, e nun móbil o que queda abaixo non se le.
@@ -147,9 +192,212 @@ QCH.abrirReceita = function (id) {
             '</div>' +
           '</div>' +
         '</div>' +
+
+        bloqueDiario() +
       '</div>' +
     '</div>'
   ));
+};
+
+/* ---------- Rexistro dun evento de cociñado ---------- */
+QCH.estrelas = function (n) {
+  return Array.from({ length: 5 }, (_, i) => i < n ? '★' : '☆').join('');
+};
+
+QCH.abrirRexistroCociñado = function (receitaId) {
+  const r = QCH.receita(receitaId);
+  if (!r) return;
+  const cociñeiros = QCH.PERSOAS.filter(p => p.cociña);
+  const hoxeIso = new Date().toISOString().slice(0, 10);
+
+  const opcionsResponsable = cociñeiros.map(p =>
+    '<option value="' + QCH.esc(p.id) + '">' + QCH.esc(p.nome) + '</option>').join('');
+  const opcionsValoracion = [5, 4, 3, 2, 1].map(n =>
+    '<option value="' + n + '"' + (n === 5 ? ' selected' : '') + '>' + QCH.estrelas(n) + '</option>').join('');
+
+  QCH.modal.abrir(QCH.modal.envoltorio(
+    '<div class="p-5 sm:p-7">' +
+      '<div class="flex items-start justify-between gap-4 mb-1">' +
+        '<div>' +
+          '<p class="text-[11px] font-bold uppercase tracking-[.14em] text-pemento mb-0.5">Diario de cociñado</p>' +
+          '<h2 class="font-display text-2xl text-tinta dark:text-crema">' + QCH.esc(r.nome) + '</h2>' +
+        '</div>' +
+        '<button type="button" data-accion="pechar-modal" aria-label="Pechar" data-autofoco ' +
+          'class="shrink-0 w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-tinta/6 dark:bg-white/10 hover:bg-tinta/12 text-tinta/60 dark:text-crema/60 grid place-items-center transition-colors">' +
+          QCH.icona('pechar', 'w-4 h-4', 2.2) + '</button>' +
+      '</div>' +
+      '<form data-accion="gardar-rexistro-cociñado" data-id="' + QCH.esc(r.id) + '" class="space-y-4 mt-4" novalidate>' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          '<div>' +
+            '<label class="block text-xs font-semibold text-tinta/60 dark:text-crema/60 mb-1.5" for="reg-data">Data</label>' +
+            '<input type="date" id="reg-data" value="' + hoxeIso + '" max="' + hoxeIso + '" ' +
+              'class="w-full px-3.5 py-2.5 rounded-xl bg-crema dark:bg-fondo border border-tinta/10 dark:border-white/10 text-sm text-tinta dark:text-crema focus:outline-none focus:border-pemento/60 focus:ring-2 focus:ring-pemento/15 transition-all">' +
+          '</div>' +
+          '<div>' +
+            '<label class="block text-xs font-semibold text-tinta/60 dark:text-crema/60 mb-1.5" for="reg-valoracion">Valoración</label>' +
+            '<select id="reg-valoracion" class="w-full px-3.5 py-2.5 rounded-xl bg-crema dark:bg-fondo border border-tinta/10 dark:border-white/10 text-sm text-tinta dark:text-crema focus:outline-none focus:border-pemento/60 focus:ring-2 focus:ring-pemento/15 transition-all">' +
+              opcionsValoracion + '</select>' +
+          '</div>' +
+        '</div>' +
+        '<div>' +
+          '<label class="block text-xs font-semibold text-tinta/60 dark:text-crema/60 mb-1.5" for="reg-responsable">Quen cociñou</label>' +
+          '<select id="reg-responsable" class="w-full px-3.5 py-2.5 rounded-xl bg-crema dark:bg-fondo border border-tinta/10 dark:border-white/10 text-sm text-tinta dark:text-crema focus:outline-none focus:border-pemento/60 focus:ring-2 focus:ring-pemento/15 transition-all">' +
+            opcionsResponsable + '</select>' +
+        '</div>' +
+        '<div>' +
+          '<label class="block text-xs font-semibold text-tinta/60 dark:text-crema/60 mb-1.5" for="reg-comentario">Como saíu (opcional)</label>' +
+          '<textarea id="reg-comentario" rows="2" placeholder="Notas, dificultades, o que se dixo á mesa…" ' +
+            'class="w-full px-3.5 py-2.5 rounded-xl bg-crema dark:bg-fondo border border-tinta/10 dark:border-white/10 text-sm text-tinta dark:text-crema placeholder:text-tinta/35 dark:placeholder:text-crema/35 focus:outline-none focus:border-pemento/60 focus:ring-2 focus:ring-pemento/15 transition-all resize-none"></textarea>' +
+        '</div>' +
+        '<div>' +
+          '<label class="block text-xs font-semibold text-tinta/60 dark:text-crema/60 mb-1.5" for="reg-cambios">Cambios respecto á receita (opcional)</label>' +
+          '<textarea id="reg-cambios" rows="2" placeholder="Menos sal, sen chourizo, o dobre de tempo…" ' +
+            'class="w-full px-3.5 py-2.5 rounded-xl bg-crema dark:bg-fondo border border-tinta/10 dark:border-white/10 text-sm text-tinta dark:text-crema placeholder:text-tinta/35 dark:placeholder:text-crema/35 focus:outline-none focus:border-pemento/60 focus:ring-2 focus:ring-pemento/15 transition-all resize-none"></textarea>' +
+        '</div>' +
+        '<button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap transition-all active:scale-[.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pemento text-sm px-5 min-h-[44px] md:min-h-[38px] bg-pemento text-white hover:bg-[#B93A26] shadow-sm hover:shadow-md">' +
+          'Gardar rexistro</button>' +
+      '</form>' +
+    '</div>',
+    'sm:max-w-md'
+  ));
+};
+
+/* ---------- Axuda da IA (Fase 4) ----------
+   A IA nunca modifica a receita por conta propia: só devolve unha
+   proposta de só lectura. Aplicala é sempre unha decisión do cociñeiro,
+   fóra desta pantalla (COOKBOOK_MODEL.md §Papel da IA). */
+QCH.axudaIA = null;
+
+const OPCIONS_IA = [
+  { accion: 'mellorar', icona: 'editar', titulo: 'Mellorar a receita', descricion: 'Redacción e pasos máis claros.' },
+  { accion: 'nutricion', icona: 'info', titulo: 'Calcular nutrición', descricion: 'Calorías, proteínas, hidratos, graxas e fibra por ración.' },
+  { accion: 'adaptar', icona: 'familia', titulo: 'Adaptar á familia', descricion: 'Suxestións segundo os comensais de hoxe.' }
+];
+
+/* Debuxa calquera forma que devolva `proposta` sen asumir un esquema
+   fixo: a resposta da IA non está normalizada, así que isto amosa
+   texto, listas e obxectos aniñados de forma xenérica e sempre escapada. */
+function renderizarPropostaIA(v) {
+  if (v == null) return '<p class="text-sm text-tinta/50 dark:text-crema/50">Sen contido.</p>';
+  if (typeof v === 'string') return '<p class="text-sm text-tinta/80 dark:text-crema/80 leading-relaxed whitespace-pre-line">' + QCH.esc(v) + '</p>';
+  if (typeof v === 'number' || typeof v === 'boolean') return '<p class="text-sm text-tinta/80 dark:text-crema/80">' + QCH.esc(String(v)) + '</p>';
+  if (Array.isArray(v)) {
+    if (!v.length) return '<p class="text-sm text-tinta/50 dark:text-crema/50">Sen contido.</p>';
+    return '<ul class="list-disc pl-5 space-y-1.5">' + v.map(item =>
+      '<li class="text-sm text-tinta/80 dark:text-crema/80">' + renderizarPropostaIA(item) + '</li>').join('') + '</ul>';
+  }
+  if (typeof v === 'object') {
+    const claves = Object.keys(v);
+    if (!claves.length) return '<p class="text-sm text-tinta/50 dark:text-crema/50">Sen contido.</p>';
+    return '<dl class="space-y-3">' + claves.map(k =>
+      '<div><dt class="text-[11px] font-bold uppercase tracking-[.1em] text-tinta/40 dark:text-crema/40">' +
+        QCH.esc(k.replace(/_/g, ' ')) + '</dt><dd class="mt-0.5">' + renderizarPropostaIA(v[k]) + '</dd></div>'
+    ).join('') + '</dl>';
+  }
+  return QCH.esc(String(v));
+}
+
+QCH.abrirAxudaIA = function (receitaId) {
+  const r = QCH.receita(receitaId);
+  if (!r) return;
+  if (!QCH.api.estaAutenticada()) {
+    QCH.toast('Inicia sesión para usar a axuda da IA', 'aviso');
+    QCH.abrirConfiguracion();
+    return;
+  }
+
+  let estado = { fase: 'opcions', accion: null, proposta: null, modelo: null, erro: null };
+
+  function pedir(accion) {
+    estado = { fase: 'cargando', accion, proposta: null, modelo: null, erro: null };
+    redebuxar();
+    const comensais = QCH.estado.get().comensais;
+    QCH.api.axudaIA(accion, r.id, { comensais }).then(resp => {
+      if (estado.fase !== 'cargando' || estado.accion !== accion) return; // xa se pechou ou se cambiou de opción
+      estado.fase = 'resultado';
+      estado.proposta = resp && resp.proposta != null ? resp.proposta : null;
+      estado.modelo = resp && resp.modelo;
+      redebuxar();
+    }).catch(erro => {
+      if (estado.fase !== 'cargando' || estado.accion !== accion) return;
+      estado.fase = 'erro';
+      estado.erro = (erro && erro.mensaxe) || 'Non se puido contactar coa IA';
+      redebuxar();
+    });
+  }
+
+  function volver() {
+    estado = { fase: 'opcions', accion: null, proposta: null, modelo: null, erro: null };
+    redebuxar();
+  }
+
+  function corpo() {
+    if (estado.fase === 'cargando') {
+      const op = OPCIONS_IA.find(o => o.accion === estado.accion);
+      return '<div class="py-10 flex flex-col items-center gap-3 text-center">' +
+        '<div class="w-10 h-10 rounded-full border-2 border-pemento/25 border-t-pemento animate-spin"></div>' +
+        '<p class="text-sm text-tinta/60 dark:text-crema/60">' +
+          (op ? QCH.esc(op.titulo) + '…' : 'Un momento…') + '</p>' +
+      '</div>';
+    }
+
+    if (estado.fase === 'erro') {
+      return '<div class="py-6 text-center space-y-4">' +
+        '<p class="text-sm text-pemento">' + QCH.esc(estado.erro) + '</p>' +
+        QCH.btn('Volver', 'ia-volver', { variante: 'secundario', icona: 'volver' }) +
+      '</div>';
+    }
+
+    if (estado.fase === 'resultado') {
+      const op = OPCIONS_IA.find(o => o.accion === estado.accion);
+      return '<div class="space-y-4">' +
+        '<div class="flex items-center justify-between gap-2">' +
+          '<p class="text-xs font-semibold text-tinta/45 dark:text-crema/45">' +
+            (op ? QCH.esc(op.titulo) : 'Proposta') + (estado.modelo ? ' · ' + QCH.esc(estado.modelo) : '') +
+          '</p>' +
+          QCH.btn('Volver', 'ia-volver', { variante: 'fantasma', pequeno: true, icona: 'volver' }) +
+        '</div>' +
+        '<div class="rounded-2xl bg-papel dark:bg-carbon border border-tinta/8 dark:border-white/10 p-4 sm:p-5">' +
+          renderizarPropostaIA(estado.proposta) +
+        '</div>' +
+        '<p class="text-xs text-tinta/40 dark:text-crema/40">Isto é só unha suxestión da IA. Non se cambiou nada na receita.</p>' +
+      '</div>';
+    }
+
+    return '<div class="space-y-2">' +
+      OPCIONS_IA.map(o =>
+        '<button type="button" data-accion="ia-pedir" data-ia-accion="' + o.accion + '" ' +
+          'class="w-full text-left flex items-center gap-3 rounded-2xl border border-tinta/8 dark:border-white/10 p-4 hover:border-pemento/50 hover:bg-pemento/5 dark:hover:bg-pemento/10 transition-colors">' +
+          '<span class="shrink-0 w-10 h-10 rounded-full bg-pemento/10 text-pemento grid place-items-center">' + QCH.icona(o.icona, 'w-5 h-5', 2) + '</span>' +
+          '<span class="min-w-0"><span class="block text-sm font-semibold text-tinta dark:text-crema">' + QCH.esc(o.titulo) + '</span>' +
+            '<span class="block text-xs text-tinta/50 dark:text-crema/50">' + QCH.esc(o.descricion) + '</span></span>' +
+        '</button>'
+      ).join('') +
+    '</div>';
+  }
+
+  function redebuxar() {
+    const cont = document.getElementById('axuda-ia-corpo');
+    if (cont) cont.innerHTML = corpo();
+  }
+
+  QCH.axudaIA = { pedir, volver };
+
+  QCH.modal.abrir(QCH.modal.envoltorio(
+    '<div class="p-5 sm:p-7">' +
+      '<div class="flex items-start justify-between gap-4 mb-1">' +
+        '<div>' +
+          '<p class="text-[11px] font-bold uppercase tracking-[.14em] text-pemento mb-0.5">Axuda da IA</p>' +
+          '<h2 class="font-display text-2xl text-tinta dark:text-crema">' + QCH.esc(r.nome) + '</h2>' +
+        '</div>' +
+        '<button type="button" data-accion="pechar-modal" aria-label="Pechar" data-autofoco ' +
+          'class="shrink-0 w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-tinta/6 dark:bg-white/10 hover:bg-tinta/12 text-tinta/60 dark:text-crema/60 grid place-items-center transition-colors">' +
+          QCH.icona('pechar', 'w-4 h-4', 2.2) + '</button>' +
+      '</div>' +
+      '<div id="axuda-ia-corpo" class="mt-4">' + corpo() + '</div>' +
+    '</div>',
+    'sm:max-w-lg'
+  ), () => { QCH.axudaIA = null; });
 };
 
 /* ---------- Selector de prato para un oco ---------- */
