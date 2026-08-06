@@ -12,7 +12,7 @@
 - **CORS funciona**: houbo un segundo fallo real, tamén corrixido — a resposta traía a cabeceira `Access-Control-Allow-Origin` **duplicada** (`https://qch.pages.dev, https://qch.pages.dev`), porque tanto Nginx coma n8n a engadían á vez; o navegador rexeita iso por spec aínda que o valor sexa "correcto". Codex quitou a inxección en Nginx; agora só n8n emite esa cabeceira, unha soa vez, tanto en `POST` coma en `OPTIONS` (preflight).
 - **Proba de punta a punta feita en navegador real** (non só contra a API): abrir `https://qch.pages.dev`, iniciar sesión co código de acceso real, cambiar a cantidade dun ingrediente na neveira, premer F5 → **o cambio persiste**. Confirmado polo usuario.
 - **Supabase existe** e está en uso polos workflows. Táboas reais: `qch_receitas`, `qch_ingredientes`, `qch_persoas`, `qch_estado`, `qch_sesions`, `qch_comparticions`. `semana`, `neveira` e `cociñeiros` **non son táboas separadas**: son claves dentro do JSON de `qch_estado`.
-- **Existe un endpoint de IA**: `POST /ia/propoñer-semana`, con Moonshot/Kimi — está inactivo e o frontend aínda non o chama (coherente con `API_CONTRACT.md` §6).
+- **Existe un endpoint de IA**: `POST /ia/propoñer-semana`, con Moonshot/Kimi — está inactivo e o frontend aínda non o chama (coherente con `API_CONTRACT.md` §8).
 - `https://qch.pages.dev` serve o frontend coa integración da API: `index.html`, `js/api.js` e `js/app.js` coinciden byte a byte coa copia local deste repo.
 
 ### Consecuencia práctica
@@ -66,7 +66,7 @@ Fase 3 (o alcance desta migración) está completa e verificada de punta a punta
 
 - Compartición: `POST /compartir` + páxina pública `/m/<token>` (`js/publico.js`), aínda non probada de punta a punta.
 - Comportamento offline-first en produción: cambiar algo sen conexión, recuperar conexión, e comprobar que `reintentarPendentes()` sincroniza correctamente (`API_CONTRACT.md` §4).
-- Comportamento exacto ante un `409` de conflito (segue sen resolver, ver `API_CONTRACT.md` §6).
+- Comportamento exacto ante un `409` de conflito (segue sen resolver, ver `API_CONTRACT.md` §8).
 
 ## Como confirmar o resto
 
