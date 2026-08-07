@@ -1,0 +1,14 @@
+# Copia este ficheiro a `.dev.vars` para probar en local con `wrangler dev`.
+# `.dev.vars` está no .gitignore: os valores reais non se soben nunca.
+#
+# En produción estes tres non son variables, son segredos:
+#   npx wrangler@4 secret put SUPABASE_URL
+#   npx wrangler@4 secret put SUPABASE_SERVICE_ROLE_KEY
+#   npx wrangler@4 secret put TOKEN_CASA
+
+SUPABASE_URL="https://<referencia-do-proxecto>.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="<a service_role key, Settings → API en Supabase>"
+TOKEN_CASA="<un token longo e xerado ao azar>"
+
+# Para probar desde a app aberta en local, engade tamén a súa orixe:
+ORIXES_PERMITIDAS="https://qch.pages.dev,http://localhost:3000"
