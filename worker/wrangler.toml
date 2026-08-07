@@ -1,0 +1,39 @@
+# Configuración do único backend de "Que comemos hoxe" (ESTRUTURA.md §5).
+#
+# Despregue:  cd worker && npx wrangler@4 deploy
+# Rexistros:  npx wrangler@4 tail
+#
+# SEGREDOS — non van aquí nunca. Póñense unha vez con `wrangler secret put`
+# e quedan gardados en Cloudflare (ESTRUTURA.md §9):
+#
+#   npx wrangler@4 secret put SUPABASE_URL
+#   npx wrangler@4 secret put SUPABASE_SERVICE_ROLE_KEY
+#   npx wrangler@4 secret put TOKEN_CASA
+#
+# Os da IA (AI_API_KEY, AI_BASE_URL, AI_MODEL) engádense no paso 5 do plan,
+# cando o Worker asuma /ia/axuda.
+
+name = "qch-api"
+main = "src/index.js"
+compatibility_date = "2026-01-15"
+workers_dev = true
+
+# Rexistros e métricas na consola de Cloudflare. Sen isto, un fallo do Worker
+# só se ve mentres `wrangler tail` está aberto.
+[observability]
+enabled = true
+
+[vars]
+# CORS: orixes exactas, separadas por comas. Sen comodíns.
+# Engade aquí a vista previa dunha rama de Pages se precisas probar contra ela
+# (por exemplo "https://qch.pages.dev,https://cambio.qch.pages.dev").
+ORIXES_PERMITIDAS = "https://qch.pages.dev"
+
+# Duración da sesión en días. 14 é o que xa duraba coa API anterior.
+DIAS_SESION = "14"
+
+# Fotos das receitas (paso 6 do plan da §13). R2 non precisa claves: móntase
+# como binding e accédese desde o código, unha peza menos que rotar.
+# [[r2_buckets]]
+# binding = "FOTOS"
+# bucket_name = "qch-fotos"

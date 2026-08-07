@@ -1,0 +1,5 @@
+# Estado local de wrangler
+.wrangler/
+
+# Segredos para probas en local (`wrangler dev`). Nunca se sobe.
+.dev.vars
