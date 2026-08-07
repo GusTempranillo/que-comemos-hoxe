@@ -115,7 +115,12 @@ que-comemos-hoxe/
 │   ├── publico.js          Páxina pública /m/<token>. A eliminar (§12).
 │   ├── compartirImaxe.js   Imaxe JPG do menú, 100 % local.
 │   └── app.js              Armazón: navegación, renderizado, eventos, sync.
-├── worker/                 (a crear) Backend en Cloudflare Workers.
+├── worker/                 Backend en Cloudflare Workers. Sen dependencias.
+│   ├── wrangler.toml       Configuración e nomes dos segredos (§9).
+│   └── src/                index (rutas) · respostas (CORS/erros) · supabase
+│                            · sesions · catalogos · estado
+├── supabase/
+│   └── esquema.sql         O esquema (§6), listo para aplicar a man.
 ├── servidor-ia/            Obsoleto tras adoptar o Worker (§2).
 └── DOCS/
 ```
@@ -233,64 +238,15 @@ O plan gratuíto limita **tempo de CPU** (10 ms por petición), non tempo de esp
 
 Pártese de cero cun esquema deliberadamente simple: `id` + `jsonb`. As receitas son documentos con forma irregular (ingredientes, pasos, versións, adaptacións) e normalizalas agora sería complexidade sen necesidade real.
 
-```sql
-create table qch_receitas (
-  id             text primary key,
-  data           jsonb not null,   -- nome, ingredientes, elaboración, tempos,
-                                   -- custo, versións, valoracións, adaptacións,
-                                   -- URLs das fotos
-  actualizado_en timestamptz not null default now()
-);
+O esquema completo vive en **`supabase/esquema.sql`**, listo para pegar no SQL Editor dun proxecto novo. Non se duplica aquí para que non poidan contradicirse: ese ficheiro é a versión que manda.
 
-create table qch_ingredientes (
-  id   text primary key,
-  data jsonb not null              -- nome, unidade, valores nutricionais /100 g
-);
-
-create table qch_persoas (
-  id   text primary key,
-  data jsonb not null              -- nome, adaptacións por receita
-);
-
--- Estado sincronizado: unha fila por recurso.
-create table qch_estado (
-  clave          text primary key, -- 'semana' | 'neveira' | 'cociñeiros'
-  data           jsonb not null,
-  actualizado_en timestamptz not null default now()
-);
-
--- Diario de cociñado: só se engaden filas, nunca se editan nin se borran.
-create table qch_diario (
-  id          text primary key,    -- 'ev_<marca>_<azar>', xerado no cliente
-  receita_id  text not null references qch_receitas(id),
-  data        date not null,
-  detalle     jsonb not null default '{}',  -- quen cociñou, valoración, notas
-  creado_en   timestamptz not null default now()
-);
-create index on qch_diario (receita_id, data desc);
-
-create table qch_sesions (
-  token      text primary key,
-  creado_en  timestamptz not null default now(),
-  caduca_en  timestamptz not null
-);
-create index on qch_sesions (caduca_en);
-
--- Memoria das conversas coa IA (§8).
-create table qch_conversas (
-  id             uuid primary key default gen_random_uuid(),
-  receita_id     text references qch_receitas(id) on delete set null,
-  mensaxes       jsonb not null default '[]',
-  actualizado_en timestamptz not null default now()
-);
-create index on qch_conversas (actualizado_en);
-```
+Táboas: `qch_receitas`, `qch_ingredientes`, `qch_persoas` (catálogos), `qch_estado` (unha fila por recurso sincronizado), `qch_diario` (un evento por fila), `qch_sesions` e `qch_conversas`.
 
 **O diario é a excepción ao patrón `qch_estado`**: é un rexistro que só medra e que nunca se sobrescribe, así que ten táboa propia con unha fila por evento, non un `jsonb` que se substitúe enteiro. Perder unha entrada por escritura concorrente sería perder memoria familiar.
 
 **Fotos**: gardadas en R2, non en Supabase. `qch_receitas.data` garda só as URLs.
 
-**RLS**: como o acceso se valida no Worker cun token de casa (non hai usuarios de Supabase Auth), as táboas non levan políticas por usuario e só se acceden coa `service_role key`, que nunca sae do Worker. Isto obriga a que **o Worker sexa o único camiño** aos datos — se algún día o frontend falase directo con Supabase, habería que deseñar RLS antes.
+**RLS**: como o acceso se valida no Worker cun token de casa (non hai usuarios de Supabase Auth), non hai políticas por usuario que escribir. Pero non chega con non escribilas: as táboas do esquema `public` quedan expostas por PostgREST á *anon key*, que é pública por deseño. Por iso o esquema activa RLS en todas as táboas **sen crear ningunha política**: así ningún rol normal ve unha soa fila, mentres que a `service_role key` —que nunca sae do Worker— salta RLS por definición. Iso é o que fai certo que **o Worker sexa o único camiño** aos datos. Se algún día o frontend falase directo con Supabase, habería que deseñar políticas antes.
 
 ---
 
